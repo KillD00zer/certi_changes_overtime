@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>منظومة رصد التغيرات المكانية عبر الزمن | بدقة الأقمار الصناعية الفائقة</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --card-bg: rgba(18, 26, 43, 0.85);
+      --card-border: rgba(56, 189, 248, 0.18);
+      --card-hover: rgba(56, 189, 248, 0.35);
+      --primary: #0284c7;
+      --primary-glow: rgba(2, 132, 199, 0.45);
+      --accent: #38bdf8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', 'Outfit', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background: radial-gradient(circle at top right, #132238 0%, #0b0f19 60%, #05070c 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding-bottom: 60px;
+    }
+
+    /* Top Navigation */
+    header {
+      background: rgba(11, 15, 25, 0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--card-border);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    .brand-box {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 16px var(--primary-glow);
+    }
+
+    .brand-titles h1 {
+      font-size: 19px;
+      font-weight: 800;
+      background: linear-gradient(90deg, #ffffff, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-titles p {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .outdir-pill {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 5px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      background: rgba(2, 132, 199, 0.15);
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      transition: all 0.2s ease;
+    }
+    .btn-sm:hover {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-1px);
+    }
+
+    /* Main Container */
+    .container {
+      max-width: 1320px;
+      margin: 24px auto;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 12px;
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* Upload Area */
+    .upload-zone {
+      border: 2px dashed rgba(56, 189, 248, 0.35);
+      border-radius: 16px;
+      padding: 32px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(2, 132, 199, 0.04);
+      transition: all 0.3s ease;
+    }
+    .upload-zone:hover {
+      border-color: var(--accent);
+      background: rgba(2, 132, 199, 0.12);
+      transform: scale(1.005);
+    }
+
+    .upload-icon {
+      font-size: 40px;
+      margin-bottom: 8px;
+      color: var(--accent);
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: white;
+      border: none;
+      padding: 13px 26px;
+      border-radius: 12px;
+      font-size: 15.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 20px var(--primary-glow);
+      transition: all 0.25s ease;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 28px rgba(2, 132, 199, 0.6);
+    }
+
+    .btn-auto-all {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.35);
+      transition: all 0.2s;
+    }
+    .btn-auto-all:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(245, 158, 11, 0.55);
+    }
+
+    .btn-capture {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+      transition: all 0.2s;
+    }
+    .btn-capture:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(16, 185, 129, 0.55);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 9px 16px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    /* Date Cells */
+    .date-config-box {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 16px;
+      background: rgba(15, 23, 42, 0.75);
+      padding: 14px 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      flex-wrap: wrap;
+    }
+
+    .date-field-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .date-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .date-select, .date-input-year {
+      background: #0b0f19;
+      border: 1px solid var(--card-border);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      outline: none;
+    }
+    .date-input-year {
+      width: 100px;
+      text-align: center;
+    }
+
+    /* Grid Layouts */
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .meta-card {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .meta-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .meta-val {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    /* Interactive Map Section */
+    .map-controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    #interactiveMap {
+      width: 100%;
+      height: 480px;
+      border-radius: 14px;
+      border: 2px solid var(--card-border);
+      z-index: 10;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+    }
+
+    /* Shots Gallery Section */
+    .shots-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 20px;
+      margin-top: 16px;
+    }
+
+    .shot-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.25s ease;
+    }
+    .shot-card.included {
+      border-color: var(--success);
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.25);
+    }
+
+    .shot-img-box {
+      width: 100%;
+      height: 230px;
+      background: #05070c;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .shot-img-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .shot-year-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--accent);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .shot-body {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .btn-include {
+      width: 100%;
+      padding: 9px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13.5px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-include:hover {
+      border-color: var(--success);
+      color: white;
+    }
+    .btn-include.active {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-color: #10b981;
+      color: white;
+      box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
+    }
+
+    textarea.shot-comment {
+      width: 100%;
+      background: #090d16;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      color: white;
+      padding: 10px;
+      font-size: 13px;
+      resize: vertical;
+      min-height: 75px;
+      outline: none;
+    }
+    textarea.shot-comment:focus {
+      border-color: var(--accent);
+    }
+
+    .shot-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding-top: 10px;
+    }
+
+    .btn-del {
+      background: transparent;
+      border: none;
+      color: var(--danger);
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .btn-del:hover {
+      text-decoration: underline;
+    }
+
+    .shot-card.active-preview {
+      border-color: var(--accent) !important;
+      box-shadow: 0 0 24px rgba(56, 189, 248, 0.45) !important;
+      transform: translateY(-2px);
+    }
+
+    .btn-preview-shot {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      background: rgba(2, 132, 199, 0.12);
+      color: var(--accent);
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-preview-shot:hover {
+      background: rgba(2, 132, 199, 0.3);
+      border-color: var(--accent);
+      color: #ffffff;
+      transform: translateY(-1px);
+    }
+    .btn-preview-shot.active {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: white;
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--primary-glow);
+    }
+
+    .shot-active-badge {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(2, 132, 199, 0.9);
+      border: 1px solid var(--accent);
+      color: white;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 800;
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    .map-status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .source-toggle-group {
+      display: inline-flex;
+      background: #090d16;
+      border-radius: 8px;
+      padding: 3px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      gap: 4px;
+    }
+    .source-btn {
+      padding: 6px 13px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .source-btn.active {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: white;
+      box-shadow: 0 2px 8px var(--primary-glow);
+    }
+
+    .empty-shots-msg {
+      text-align: center;
+      padding: 30px;
+      color: var(--text-muted);
+      font-size: 14px;
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+    }
+
+    .banner-success {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(16, 185, 129, 0.05));
+      border: 1px solid var(--success);
+      border-radius: 14px;
+      padding: 20px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      animation: fadeIn 0.4s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header>
+    <div class="brand-box">
+      <div class="brand-icon">🛰️</div>
+      <div class="brand-titles">
+        <h1>منظومة رصد التغيرات المكانية عبر الزمن</h1>
+        <p>المركز التكنولوجي لمعلومات شبكات المرافق | تصوير فضائي فائق الدقة (30cm Sub-Meter)</p>
+      </div>
+    </div>
+    <div class="nav-actions">
+      <div class="outdir-pill" id="outdirPill" title="مجلد الحفظ">📁 <span id="outdirText">...</span></div>
+      <button class="btn-sm" onclick="browseFolder()">تغيير المجلد...</button>
+      <button class="btn-sm" onclick="openFolder()">فتح المجلد</button>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- Step 1: Upload & Date Configuration -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span>📁</span> الخطوة 1: ملف الرفع المساحي وتاريخ بداية الرصد
+        </div>
+        <button class="btn-secondary" onclick="loadSample()">⚡ تجربة فورية: تحميل ملف العينة (طناح)</button>
+      </div>
+
+      <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📤</div>
+        <h3 style="font-size: 17px; margin-bottom: 6px;">اسحب وأفلت ملف الرفع المساحي هنا (CSV أو Excel)</h3>
+        <p style="color: var(--text-muted); font-size: 12.5px;">يدعم إحداثيات WGS84 و ETM المصرية (Red Belt) و UTM 36N</p>
+        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleFileSelect(event)">
+      </div>
+
+      <!-- Date Configuration: Month & Year Cells -->
+      <div class="date-config-box" id="dateConfigBox" style="display: none;">
+        <span style="font-size: 14px; font-weight: 800; color: white;">📅 تاريخ بداية الرصد المعتمد:</span>
+
+        <div class="date-field-group">
+          <label class="date-label">الشهر:</label>
+          <select id="startMonth" class="date-select" onchange="onDateChanged()">
+            <option value="1">1 - يناير</option>
+            <option value="2">2 - فبراير</option>
+            <option value="3">3 - مارس</option>
+            <option value="4">4 - أبريل</option>
+            <option value="5" selected>5 - مايو</option>
+            <option value="6">6 - يونيو</option>
+            <option value="7">7 - يوليو</option>
+            <option value="8">8 - أغسطس</option>
+            <option value="9">9 - سبتمبر</option>
+            <option value="10">10 - أكتوبر</option>
+            <option value="11">11 - نوفمبر</option>
+            <option value="12">12 - ديسمبر</option>
+          </select>
+        </div>
+
+        <div class="date-field-group">
+          <label class="date-label">السنة:</label>
+          <input type="number" id="startYear" class="date-input-year" min="2000" max="2030" value="2018" onchange="onDateChanged()">
+        </div>
+
+        <!-- Distinct Passes Counter Pill -->
+        <div class="passes-pill" id="passesPill" style="display: none; align-items: center; gap: 8px; background: rgba(2, 132, 199, 0.18); border: 1px solid rgba(56, 189, 248, 0.4); padding: 6px 14px; border-radius: 8px;">
+          <span style="font-size: 17px;">🛰️</span>
+          <span style="font-size: 13px; font-weight: 800; color: white;">المتاح للموقع: <span id="passesCountBadge" style="color: var(--accent); font-weight: 900; font-size: 15px;">-</span> تصويرات جوية حقيقية</span>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-right: auto; flex-wrap: wrap;">
+          <button class="btn-auto-all" onclick="autoFetchAllYears('passes')">
+            <span>⚡</span> سحب التصويرات الجوية الفعلية للموقع (<span id="btnPassesCountText">...</span>)
+          </button>
+          <button class="btn-secondary" style="font-size: 12px;" onclick="autoFetchAllYears('years')" title="سحب لقطة لكل سنة بالترتيب الزمني">
+            📅 سحب كل السنوات (سنة بسنة)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Parcel Metadata Overview -->
+    <div class="card" id="parcelCard" style="display: none;">
+      <div class="card-header">
+        <div class="card-title"><span>📐</span> بيانات قطعة الأرض والرفع المساحي</div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button class="btn-sm" style="background: rgba(16, 185, 129, 0.2); color: var(--success); border-color: var(--success);" onclick="exportKML()">🌍 فتح في Google Earth (.kml)</button>
+          <div id="crsBadge" style="font-size: 12px; background: rgba(56, 189, 248, 0.15); color: var(--accent); padding: 4px 10px; border-radius: 6px;">CRS: WGS84</div>
+        </div>
+      </div>
+      <div class="grid-4" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+        <div class="meta-card">
+          <div class="meta-label">اسم مقدم الطلب</div>
+          <div class="meta-val" id="valApplicant">-</div>
+        </div>
+        <div class="meta-card">
+          <div class="meta-label">الرقم القومي</div>
+          <div class="meta-val" id="valNID">-</div>
+        </div>
+        <div class="meta-card">
+          <div class="meta-label">المركز / القرية</div>
+          <div class="meta-val" id="valLocation">-</div>
+        </div>
+        <div class="meta-card">
+          <div class="meta-label">المساحة المحسوبة (بيضاوي WGS84)</div>
+          <div class="meta-val" id="valArea" style="color: #38bdf8;">- م²</div>
+        </div>
+        <div class="meta-card" style="border-color: rgba(56, 189, 248, 0.35); background: rgba(2, 132, 199, 0.1);">
+          <div class="meta-label" style="color: var(--accent); font-weight: 700;">التصويرات الجوية الفعلية للموقع</div>
+          <div class="meta-val" id="valPassesCount" style="color: #38bdf8;">- تصويرات</div>
+        </div>
+        <div class="meta-card" id="cardTransType" style="display: none;">
+          <div class="meta-label">وصف التعامل / الموقع</div>
+          <div class="meta-val" id="valTransType" style="font-size: 14px;">-</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: Interactive Map Window -->
+    <div class="card" id="mapCard" style="display: none;">
+      <div class="card-header">
+        <div class="card-title"><span>🗺️</span> شاشة الخريطة التفاعلية ورصد التغيرات التاريخية</div>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+          <div class="source-toggle-group">
+            <button id="srcBtnWayback" class="source-btn active" onclick="setMapSource('wayback')">🛰️ الأقمار التاريخية (Wayback Sub-Meter)</button>
+            <button id="srcBtnGoogle" class="source-btn" onclick="setMapSource('google')">🗺️ Google Maps</button>
+          </div>
+          <button class="btn-secondary" onclick="resetMapToParcel()" title="إعادة ضبط الرؤية لكامل قطعة الأرض">🎯 توسيط الأرض</button>
+        </div>
+      </div>
+
+      <!-- Map Toolbar Controls -->
+      <div class="map-controls-bar">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <label style="font-size: 13.5px; font-weight: 700; color: white;">📅 سنة العرض والالتقاط:</label>
+          <select id="shotYearSelect" class="date-select" style="min-width: 130px;" onchange="onMapYearChanged(this.value)">
+            <!-- Populated dynamically -->
+          </select>
+          <button class="btn-capture" onclick="captureCurrentMapShot()">
+            <span>📸</span> التقاط الصورة لهذه السنة
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn-secondary" onclick="triggerCustomUpload()" title="رفع لقطة شاشة من ملف">📁 رفع لقطة من ملف...</button>
+          <input type="file" id="customUploadInput" accept="image/*" style="display: none;" onchange="handleCustomFileUpload(event)">
+          <button class="btn-secondary" onclick="pasteFromClipboard()" title="لصق لقطة من الحافظة بعد أخذها من Google Earth">📋 لصق (Ctrl+V)</button>
+        </div>
+      </div>
+
+      <!-- Live Status & Preview Bar -->
+      <div class="map-status-bar" id="mapStatusBar">
+        <div id="mapActiveStatus" style="font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 8px;">
+          <span>🛰️</span> جاري ضبط طبقة الأقمار الصناعية...
+        </div>
+        <div id="mapPreviewIndicator" style="display: none; font-size: 12px; background: rgba(56, 189, 248, 0.15); color: var(--accent); padding: 4px 12px; border-radius: 6px; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 700;">
+          👁️ قيد معاينة لقطة معتمدة
+        </div>
+      </div>
+
+      <!-- Leaflet Interactive Satellite Map -->
+      <div id="interactiveMap"></div>
+    </div>
+
+    <!-- Step 4: Captured Shots Section (قسم اللقطات المعتمدة) -->
+    <div class="card" id="shotsCard" style="display: none;">
+      <div class="card-header">
+        <div class="card-title">
+          <span>🖼️</span> قسم اللقطات المعتمدة للتقرير الرسمي (<span id="includedShotsCount">0</span> لقطة متضمنة)
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted);">
+          اضغط زر <b>"تضمين في التقرير"</b> لأي لقطة تريد ظهورها في ملف الوورد
+        </div>
+      </div>
+
+      <!-- Shots Grid Container -->
+      <div class="shots-grid" id="shotsGrid">
+        <div class="empty-shots-msg" id="emptyShotsMsg">
+          لا توجد لقطات ملتقطة حتى الآن. اضغط زر <b>"⚡ سحب لقطات كل السنوات تلقائياً"</b> أو زر <b>"📸 التقاط الصورة"</b> لتظهر اللقطات هنا.
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5: Export to Word Document -->
+    <div class="card" id="exportCard" style="display: none;">
+      <div class="card-header">
+        <div class="card-title"><span>📄</span> تصدير التقرير الرسمي الشامل (.docx)</div>
+        <div style="font-size: 12.5px; color: var(--text-muted);">
+          سيتم تضمين اللقطات التي قمت بتفعيل زر تضمينها فقط
+        </div>
+      </div>
+
+      <div style="text-align: center; margin: 10px 0;">
+        <button class="btn-primary" id="btnGenerate" onclick="generateReport()">
+          <span>📄</span> إصدار تقرير التغيرات المكانية الشامل (.docx)
+        </button>
+      </div>
+
+      <!-- Success Notification Banner -->
+      <div class="banner-success" id="bannerSuccess" style="margin-top: 16px;">
+        <div>
+          <h4 style="color: var(--success); font-size: 16px; margin-bottom: 4px;">🎉 تم إنشاء التقرير بنجاح!</h4>
+          <p style="font-size: 13px; color: var(--text-muted);" id="successDetails"></p>
+        </div>
+        <button class="btn-primary" style="padding: 8px 16px; font-size: 13px;" onclick="openFolder()">📁 فتح المجلد</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let currentParcel = null;
+    let leafletMap = null;
+    let currentTileLayer = null;
+    let parcelPolygonLayer = null;
+    let parcelMarkersLayer = null;
+    let capturedShots = [];
+    let releasesByYear = {};
+    let distinctPasses = [];
+    let distinctPassesCount = 0;
+    let currentMapYear = 2018;
+    let currentMapSource = 'wayback'; // 'wayback' or 'google'
+    let activePreviewShotId = null;
+
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchOutputDir();
+      window.addEventListener('paste', handleGlobalPaste);
+    });
+
+    async function fetchOutputDir() {
+      try {
+        const res = await fetch('/api/get-output-dir');
+        const data = await res.json();
+        document.getElementById('outdirText').textContent = data.output_dir;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function browseFolder() {
+      try {
+        const res = await fetch('/api/browse-output-dir', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('outdirText').textContent = data.output_dir;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function openFolder() {
+      try {
+        await fetch('/api/open-folder', { method: 'POST' });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function exportKML() {
+      if (!currentParcel) return;
+      try {
+        const res = await fetch('/api/export-kml', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parcel: currentParcel })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('تم تصدير ملف KML وتشغيله في Google Earth بنجاح!');
+        }
+      } catch (e) {
+        alert('حدث خطأ في تصدير KML: ' + e);
+      }
+    }
+
+    async function loadSample() {
+      try {
+        const res = await fetch('/api/load-sample', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          applyParcelData(data.parcel, data.releases, data.all_releases, data.distinct_passes);
+        }
+      } catch (e) {
+        alert('حدث خطأ أثناء تحميل العينة: ' + e);
+      }
+    }
+
+    async function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const fd = new FormData();
+      fd.append('file', file);
+
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: fd
+        });
+        const data = await res.json();
+        if (data.success) {
+          applyParcelData(data.parcel, data.releases, data.all_releases, data.distinct_passes);
+        } else {
+          alert('خطأ في قراءة الملف: ' + data.error);
+        }
+      } catch (err) {
+        alert('فشل رفع الملف: ' + err);
+      }
+    }
+
+    function updatePassesCounterUI() {
+      const count = distinctPassesCount;
+      const countText = count > 0 ? `${count} تصويرات جوية حقيقية` : 'جاري الفحص...';
+
+      const elVal = document.getElementById('valPassesCount');
+      if (elVal) elVal.textContent = count > 0 ? `${count} تصويرات` : '-';
+
+      const elBadge = document.getElementById('passesCountBadge');
+      if (elBadge) elBadge.textContent = count > 0 ? count : '-';
+
+      const elBtnCount = document.getElementById('btnPassesCountText');
+      if (elBtnCount) elBtnCount.textContent = count > 0 ? `${count} تصويرات` : '...';
+
+      const pill = document.getElementById('passesPill');
+      if (pill) pill.style.display = count > 0 ? 'inline-flex' : 'none';
+    }
+
+    function applyParcelData(parcel, releases, allReleases, passes) {
+      currentParcel = parcel;
+      capturedShots = [];
+      activePreviewShotId = null;
+
+      distinctPasses = passes || [];
+      distinctPassesCount = distinctPasses.length;
+      updatePassesCounterUI();
+
+      releasesByYear = {};
+      const relList = (allReleases && allReleases.length) ? allReleases : (releases || []);
+      relList.forEach(r => {
+        releasesByYear[r.year] = r;
+      });
+
+      document.getElementById('valApplicant').textContent = parcel.applicant_name;
+      document.getElementById('valNID').textContent = parcel.national_id;
+      document.getElementById('valLocation').textContent = `${parcel.center_city} / ${parcel.village}`;
+      document.getElementById('valArea').textContent = `${parcel.calculated_area_m2} م²`;
+      document.getElementById('crsBadge').textContent = `CRS: ${parcel.crs}`;
+
+      const transBox = document.getElementById('cardTransType');
+      const valTrans = document.getElementById('valTransType');
+      const transParts = [parcel.transaction_type, parcel.site_description].filter(Boolean);
+      if (transParts.length > 0 && transBox && valTrans) {
+        valTrans.textContent = transParts.join(' - ');
+        transBox.style.display = 'block';
+      } else if (transBox) {
+        transBox.style.display = 'none';
+      }
+
+      document.getElementById('startMonth').value = parcel.start_month || 5;
+      document.getElementById('startYear').value = parcel.start_year || 2018;
+
+      document.getElementById('dateConfigBox').style.display = 'flex';
+      document.getElementById('parcelCard').style.display = 'block';
+      document.getElementById('mapCard').style.display = 'block';
+      document.getElementById('shotsCard').style.display = 'block';
+      document.getElementById('exportCard').style.display = 'block';
+
+      currentMapYear = parcel.start_year || 2018;
+      populateYearSelect(currentMapYear);
+      renderShotsGrid();
+
+      setTimeout(() => {
+        initLeafletMap(parcel);
+        switchMapYear(currentMapYear);
+      }, 100);
+    }
+
+    function populateYearSelect(startYear) {
+      const select = document.getElementById('shotYearSelect');
+      select.innerHTML = '';
+      const currentYear = new Date().getFullYear();
+      const endYear = Math.max(currentYear, startYear);
+
+      if (distinctPasses && distinctPasses.length > 0) {
+        const optGroupPasses = document.createElement('optgroup');
+        optGroupPasses.label = `✨ التصويرات الجوية الفعلية للموقع (${distinctPasses.length} تصويرات)`;
+        distinctPasses.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.year;
+          opt.setAttribute('data-key', p.key || '');
+          opt.setAttribute('data-tile-url', p.tile_url_template || '');
+          opt.textContent = p.label || `تصوير سنة ${p.year}`;
+          if (p.year === currentMapYear) opt.selected = true;
+          optGroupPasses.appendChild(opt);
+        });
+        select.appendChild(optGroupPasses);
+
+        const optGroupYears = document.createElement('optgroup');
+        optGroupYears.label = '📅 عرض تقويمي سنوي';
+        for (let y = startYear; y <= endYear; y++) {
+          const opt = document.createElement('option');
+          opt.value = y;
+          const rel = releasesByYear[y];
+          if (rel) {
+            opt.setAttribute('data-key', rel.key || '');
+            opt.setAttribute('data-tile-url', rel.tile_url_template || '');
+          }
+          opt.textContent = `سنة ${y}`;
+          if (!distinctPasses.some(p => p.year === currentMapYear) && y === currentMapYear) {
+            opt.selected = true;
+          }
+          optGroupYears.appendChild(opt);
+        }
+        select.appendChild(optGroupYears);
+      } else {
+        for (let y = startYear; y <= endYear; y++) {
+          const opt = document.createElement('option');
+          opt.value = y;
+          const rel = releasesByYear[y];
+          if (rel) {
+            opt.setAttribute('data-key', rel.key || '');
+            opt.setAttribute('data-tile-url', rel.tile_url_template || '');
+          }
+          const extra = rel ? ` (${rel.release_date})` : '';
+          opt.textContent = `سنة ${y}${extra}`;
+          if (y === currentMapYear) opt.selected = true;
+          select.appendChild(opt);
+        }
+      }
+    }
+
+    async function onDateChanged() {
+      if (!currentParcel) return;
+      const m = parseInt(document.getElementById('startMonth').value);
+      const y = parseInt(document.getElementById('startYear').value);
+      currentParcel.start_month = m;
+      currentParcel.start_year = y;
+      currentParcel.start_date = `${y}-${m < 10 ? '0' + m : m}-01`;
+      currentMapYear = y;
+
+      // 1. Fetch distinct passes for the new start year
+      try {
+        const pRes = await fetch('/api/get-parcel-passes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parcel: currentParcel, start_year: y })
+        });
+        const pData = await pRes.json();
+        if (pData.success) {
+          distinctPasses = pData.distinct_passes || [];
+          distinctPassesCount = pData.passes_count || distinctPasses.length;
+          updatePassesCounterUI();
+        }
+      } catch (e) {
+        console.error("Error fetching passes on date change:", e);
+      }
+
+      // 2. If we don't have releases for this start year, fetch them
+      if (!releasesByYear[y]) {
+        try {
+          const res = await fetch(`/api/get-releases?start_year=${y}`);
+          const data = await res.json();
+          if (data.success && data.releases) {
+            data.releases.forEach(r => { releasesByYear[r.year] = r; });
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      populateYearSelect(y);
+      switchMapYear(y);
+    }
+
+    function onMapYearChanged(val) {
+      const sel = document.getElementById('shotYearSelect');
+      const opt = sel ? sel.options[sel.selectedIndex] : null;
+      const key = opt ? opt.getAttribute('data-key') : null;
+      const tileUrl = opt ? opt.getAttribute('data-tile-url') : null;
+      const lbl = opt ? opt.textContent : null;
+      const y = parseInt(val);
+      switchMapYear(y, null, null, key, tileUrl, lbl);
+    }
+
+    function setMapSource(source) {
+      currentMapSource = source;
+      const btnWayback = document.getElementById('srcBtnWayback');
+      const btnGoogle = document.getElementById('srcBtnGoogle');
+      if (btnWayback) btnWayback.classList.toggle('active', source === 'wayback');
+      if (btnGoogle) btnGoogle.classList.toggle('active', source === 'google');
+      switchMapYear(currentMapYear);
+    }
+
+    function resetMapToParcel() {
+      if (leafletMap && parcelPolygonLayer) {
+        leafletMap.fitBounds(parcelPolygonLayer.getBounds(), { padding: [60, 60] });
+      }
+    }
+
+    function switchMapYear(year, source = null, shotId = null, key = null, directTileUrl = null, customLabel = null) {
+      if (!leafletMap) return;
+      const y = parseInt(year);
+      currentMapYear = y;
+      if (source) {
+        currentMapSource = source;
+        const btnWayback = document.getElementById('srcBtnWayback');
+        const btnGoogle = document.getElementById('srcBtnGoogle');
+        if (btnWayback) btnWayback.classList.toggle('active', currentMapSource === 'wayback');
+        if (btnGoogle) btnGoogle.classList.toggle('active', currentMapSource === 'google');
+      }
+
+      // Update dropdown selection if different
+      const sel = document.getElementById('shotYearSelect');
+      if (sel && parseInt(sel.value) !== y) {
+        sel.value = y;
+      }
+
+      // Find tile layer matching the pass or year
+      let tileUrl = directTileUrl || '';
+      let labelTitle = customLabel || `تصوير سنة ${y}`;
+
+      if (!tileUrl) {
+        let matchedPass = null;
+        if (key) {
+          matchedPass = distinctPasses.find(p => String(p.key) === String(key));
+        }
+        if (!matchedPass && shotId) {
+          const s = capturedShots.find(cs => cs.id === shotId);
+          if (s && s.tile_url_template) {
+            tileUrl = s.tile_url_template;
+            labelTitle = s.label || labelTitle;
+          }
+        }
+        if (!matchedPass && !tileUrl) {
+          matchedPass = distinctPasses.find(p => p.year === y);
+        }
+        if (matchedPass) {
+          tileUrl = matchedPass.tile_url_template;
+          labelTitle = matchedPass.label || labelTitle;
+        } else if (!tileUrl && releasesByYear[y]) {
+          tileUrl = releasesByYear[y].tile_url_template;
+        }
+      }
+
+      let maxZoom = 19;
+      let statusHtml = '';
+
+      if (currentMapSource === 'wayback' && tileUrl) {
+        maxZoom = 19;
+        if (leafletMap.getZoom() > 19) {
+          leafletMap.setZoom(19);
+        }
+        statusHtml = `<span>🛰️</span> <b>أقمار ماكسار التاريخية (Wayback)</b> | <b>${labelTitle}</b> (دقة فائقة sub-meter)`;
+      } else {
+        tileUrl = 'https://mt{s}.google.com/vt/lyrs=s&hl=ar&x={x}&y={y}&z={z}';
+        maxZoom = 20;
+        statusHtml = `<span>🗺️</span> <b>Google Maps Satellite</b> | سنة <b>${y}</b>`;
+      }
+
+      if (currentTileLayer) {
+        leafletMap.removeLayer(currentTileLayer);
+      }
+
+      currentTileLayer = L.tileLayer(tileUrl, {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: maxZoom
+      }).addTo(leafletMap);
+
+      currentTileLayer.bringToBack();
+
+      const statusEl = document.getElementById('mapActiveStatus');
+      if (statusEl) {
+        statusEl.innerHTML = statusHtml;
+      }
+
+      // Automatically sync active preview card badge with current map year or shotId
+      updateActiveCardUI(shotId || y);
+    }
+
+    /* Synchronize the "معروضة في الخريطة" badge and glowing style with the active shot */
+    function updateActiveCardUI(yearOrId) {
+      let activeShot = null;
+      if (typeof yearOrId === 'string' && yearOrId.startsWith('shot_')) {
+        activeShot = capturedShots.find(s => s.id === yearOrId);
+      }
+      if (!activeShot && activePreviewShotId) {
+        activeShot = capturedShots.find(s => s.id === activePreviewShotId);
+      }
+      if (!activeShot) {
+        const y = parseInt(yearOrId);
+        if (!isNaN(y)) {
+          activeShot = capturedShots.find(s => s.year === y);
+        }
+      }
+
+      activePreviewShotId = activeShot ? activeShot.id : null;
+
+      // Update all shot cards in the gallery dynamically
+      capturedShots.forEach((shot) => {
+        const card = document.getElementById(`shot_card_${shot.id}`);
+        if (!card) return;
+
+        const imgBox = card.querySelector('.shot-img-box');
+        const previewBtn = card.querySelector('.btn-preview-shot');
+        const existingBadge = imgBox ? imgBox.querySelector('.shot-active-badge') : null;
+
+        const isCurrentActive = (activeShot && shot.id === activeShot.id);
+
+        if (isCurrentActive) {
+          card.classList.add('active-preview');
+          if (previewBtn) {
+            previewBtn.classList.add('active');
+            previewBtn.innerHTML = `<span>✅</span> معروضة حالياً في الخريطة`;
+          }
+          if (imgBox && !existingBadge) {
+            const badge = document.createElement('div');
+            badge.className = 'shot-active-badge';
+            badge.innerHTML = `👁️ معروضة في الخريطة`;
+            imgBox.appendChild(badge);
+          }
+        } else {
+          card.classList.remove('active-preview');
+          if (previewBtn) {
+            previewBtn.classList.remove('active');
+            previewBtn.innerHTML = `<span>👁️</span> معاينة في شاشة الخريطة`;
+          }
+          if (existingBadge) {
+            existingBadge.remove();
+          }
+        }
+      });
+
+      // Update map header indicator
+      const indicator = document.getElementById('mapPreviewIndicator');
+      if (indicator) {
+        if (activeShot) {
+          indicator.style.display = 'inline-flex';
+          const labelText = activeShot.label || `تصوير سنة ${activeShot.year}`;
+          indicator.innerHTML = `👁️ معروضة في الخريطة: <b>${labelText}</b>`;
+        } else {
+          indicator.style.display = 'none';
+        }
+      }
+    }
+
+    function initLeafletMap(parcel) {
+      if (leafletMap) {
+        leafletMap.remove();
+        leafletMap = null;
+        currentTileLayer = null;
+      }
+
+      const verts = parcel.vertices;
+      const latlngs = verts.map(v => [v.lat, v.lon]);
+
+      leafletMap = L.map('interactiveMap', {
+        attributionControl: false
+      });
+
+      parcelPolygonLayer = L.polygon(latlngs, {
+        color: '#ef4444',
+        weight: 3.5,
+        fillColor: '#ef4444',
+        fillOpacity: 0.22
+      }).addTo(leafletMap);
+
+      parcelMarkersLayer = L.layerGroup().addTo(leafletMap);
+      verts.forEach((v, idx) => {
+        const icon = L.divIcon({
+          className: 'node-label',
+          html: `<div style="background:#22c55e;color:#000;border:2px solid #fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;">${v.id || idx + 1}</div>`,
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        });
+        L.marker([v.lat, v.lon], { icon: icon }).addTo(parcelMarkersLayer);
+      });
+
+      leafletMap.fitBounds(parcelPolygonLayer.getBounds(), {
+        padding: [60, 60]
+      });
+    }
+
+    /* Preview a specific shot in the interactive map window */
+    function previewShotInMap(idx) {
+      if (!capturedShots || !capturedShots[idx]) return;
+      const shot = capturedShots[idx];
+      activePreviewShotId = shot.id;
+
+      // 1. Switch map layer directly to this exact shot's tile layer
+      switchMapToShot(shot);
+
+      // 2. Reset view to parcel
+      resetMapToParcel();
+
+      // 3. Update active card highlight and badges
+      updateActiveCardUI(shot.id);
+
+      // 4. Smooth scroll into the map card
+      document.getElementById('mapCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function switchMapToShot(shot) {
+      if (!leafletMap || !shot) return;
+      const y = parseInt(shot.year);
+      currentMapYear = y;
+      currentMapSource = 'wayback';
+
+      const btnWayback = document.getElementById('srcBtnWayback');
+      const btnGoogle = document.getElementById('srcBtnGoogle');
+      if (btnWayback) btnWayback.classList.add('active');
+      if (btnGoogle) btnGoogle.classList.remove('active');
+
+      const sel = document.getElementById('shotYearSelect');
+      if (sel) {
+        let matchedOpt = null;
+        if (shot.key) {
+          for (let i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].getAttribute('data-key') === String(shot.key)) {
+              matchedOpt = sel.options[i];
+              break;
+            }
+          }
+        }
+        if (!matchedOpt) {
+          for (let i = 0; i < sel.options.length; i++) {
+            if (parseInt(sel.options[i].value) === y) {
+              matchedOpt = sel.options[i];
+              break;
+            }
+          }
+        }
+        if (matchedOpt) matchedOpt.selected = true;
+      }
+
+      let tileUrl = shot.tile_url_template;
+      if (!tileUrl && shot.key) {
+        const pass = distinctPasses.find(p => String(p.key) === String(shot.key));
+        if (pass) tileUrl = pass.tile_url_template;
+      }
+      if (!tileUrl) {
+        const pass = distinctPasses.find(p => p.year === y);
+        tileUrl = pass ? pass.tile_url_template : (releasesByYear[y] ? releasesByYear[y].tile_url_template : '');
+      }
+      if (!tileUrl) {
+        tileUrl = 'https://mt{s}.google.com/vt/lyrs=s&hl=ar&x={x}&y={y}&z={z}';
+      }
+
+      if (currentTileLayer) {
+        leafletMap.removeLayer(currentTileLayer);
+      }
+
+      currentTileLayer = L.tileLayer(tileUrl, {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 19
+      }).addTo(leafletMap);
+
+      currentTileLayer.bringToBack();
+
+      const statusEl = document.getElementById('mapActiveStatus');
+      if (statusEl) {
+        const lbl = shot.label || `تصوير سنة ${y}`;
+        statusEl.innerHTML = `<span>🛰️</span> <b>أقمار ماكسار التاريخية (Wayback)</b> | <b>${lbl}</b> (دقة فائقة sub-meter)`;
+      }
+
+      updateActiveCardUI(shot.id);
+    }
+
+    /* Auto-fetch either distinct parcel passes or full annual timeline */
+    async function autoFetchAllYears(mode = 'passes') {
+      if (!currentParcel) return;
+      const btn = event ? event.target.closest('button') : null;
+      const origHtml = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span>⏳</span> جاري سحب ${mode === 'passes' ? 'التصويرات الجوية الفعلية للموقع' : 'لقطات كل السنوات'}...`;
+      }
+
+      try {
+        const res = await fetch('/api/auto-fetch-all-years', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ parcel: currentParcel, mode: mode })
+        });
+        const data = await res.json();
+        if (data.success) {
+          capturedShots = data.shots;
+          const matchShot = capturedShots.find(s => s.year === currentMapYear);
+          activePreviewShotId = matchShot ? matchShot.id : (capturedShots.length ? capturedShots[0].id : null);
+          renderShotsGrid();
+          document.getElementById('shotsCard').scrollIntoView({ behavior: 'smooth' });
+        } else {
+          alert('خطأ في جلب اللقطات: ' + data.error);
+        }
+      } catch (e) {
+        alert('حدث خطأ: ' + e);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origHtml;
+        }
+      }
+    }
+
+    /* Capture Shot from Map */
+    async function captureCurrentMapShot() {
+      if (!currentParcel || !leafletMap) return;
+      const sel = document.getElementById('shotYearSelect');
+      const year = parseInt(sel.value);
+      const opt = sel ? sel.options[sel.selectedIndex] : null;
+      const key = opt ? opt.getAttribute('data-key') : null;
+      const tileUrl = opt ? opt.getAttribute('data-tile-url') : null;
+      const labelText = opt ? opt.textContent : `سنة ${year}`;
+      const bounds = leafletMap.getBounds();
+      const zoom = leafletMap.getZoom();
+
+      const btn = event ? event.target.closest('button') : null;
+      const origText = btn ? btn.innerHTML : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span>⏳</span> جاري التقاط الصورة...`;
+      }
+
+      try {
+        const res = await fetch('/api/capture-shot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            parcel: currentParcel,
+            year: year,
+            key: key,
+            tile_url_template: tileUrl,
+            label: labelText,
+            zoom: zoom,
+            source: currentMapSource,
+            bounds: {
+              min_lon: bounds.getWest(),
+              max_lon: bounds.getEast(),
+              min_lat: bounds.getSouth(),
+              max_lat: bounds.getNorth()
+            }
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          capturedShots.unshift(data.shot);
+          activePreviewShotId = data.shot.id;
+          renderShotsGrid();
+          document.getElementById('shotsCard').scrollIntoView({ behavior: 'smooth' });
+        } else {
+          alert('خطأ في التقاط الصورة: ' + data.error);
+        }
+      } catch (e) {
+        alert('حدث خطأ: ' + e);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origText;
+        }
+      }
+    }
+
+    function triggerCustomUpload() {
+      document.getElementById('customUploadInput').click();
+    }
+
+    function handleCustomFileUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        uploadCustomShot(evt.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function handleGlobalPaste(e) {
+      if (!currentParcel) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const blob = items[i].getAsFile();
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            uploadCustomShot(evt.target.result);
+          };
+          reader.readAsDataURL(blob);
+          break;
+        }
+      }
+    }
+
+    async function pasteFromClipboard() {
+      try {
+        const clipboardItems = await navigator.clipboard.read();
+        for (const item of clipboardItems) {
+          for (const type of item.types) {
+            if (type.startsWith('image/')) {
+              const blob = await item.getType(type);
+              const reader = new FileReader();
+              reader.onload = (evt) => {
+                uploadCustomShot(evt.target.result);
+              };
+              reader.readAsDataURL(blob);
+              return;
+            }
+          }
+        }
+        alert('لم يتم العثور على صورة في الحافظة. يرجى أخذ لقطة شاشة أولاً.');
+      } catch (err) {
+        alert('اضغط Ctrl+V للصق اللقطة مباشرة.');
+      }
+    }
+
+    async function uploadCustomShot(base64Data) {
+      const year = parseInt(document.getElementById('shotYearSelect').value);
+      try {
+        const res = await fetch('/api/upload-shot-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            year: year,
+            image_base64: base64Data
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          capturedShots.unshift(data.shot);
+          activePreviewShotId = data.shot.id;
+          renderShotsGrid();
+          document.getElementById('shotsCard').scrollIntoView({ behavior: 'smooth' });
+        }
+      } catch (e) {
+        alert('خطأ في حفظ اللقطة: ' + e);
+      }
+    }
+
+    function renderShotsGrid() {
+      const grid = document.getElementById('shotsGrid');
+      const emptyMsg = document.getElementById('emptyShotsMsg');
+
+      if (capturedShots.length === 0) {
+        grid.innerHTML = '';
+        grid.appendChild(emptyMsg);
+        emptyMsg.style.display = 'block';
+        updateIncludedCount();
+        return;
+      }
+
+      grid.innerHTML = '';
+      capturedShots.forEach((shot, idx) => {
+        const isActive = (shot.id === activePreviewShotId);
+        const card = document.createElement('div');
+        card.className = `shot-card ${shot.included ? 'included' : ''} ${isActive ? 'active-preview' : ''}`;
+        card.id = `shot_card_${shot.id}`;
+
+        const dtBadge = shot.label || (shot.year ? `تصوير سنة ${shot.year}` : (shot.release_date || ''));
+
+        card.innerHTML = `
+          <div class="shot-img-box" onclick="previewShotInMap(${idx})" style="cursor: pointer;" title="اضغط لمعاينة هذه اللقطة في شاشة الخريطة أعلاه">
+            <img src="${shot.image_url}" alt="Shot">
+            <div class="shot-year-badge">🛰️ ${dtBadge}</div>
+            ${isActive ? '<div class="shot-active-badge">👁️ معروضة في الخريطة</div>' : ''}
+          </div>
+          <div class="shot-body">
+            <!-- Preview in Map Button -->
+            <button class="btn-preview-shot ${isActive ? 'active' : ''}" onclick="previewShotInMap(${idx})">
+              <span>👁️</span> معاينة في شاشة الخريطة
+            </button>
+
+            <!-- Include Toggle Button -->
+            <button class="btn-include ${shot.included ? 'active' : ''}" onclick="toggleIncludeShot(${idx})">
+              <span>${shot.included ? '✅ متضمن في التقرير' : '➕ تضمين في التقرير'}</span>
+            </button>
+
+            <!-- Observation Textarea -->
+            <div>
+              <label style="font-size: 12px; color: var(--text-muted); font-weight: 700;">ملاحظات المعاينة لـ (${dtBadge}):</label>
+              <textarea class="shot-comment" placeholder="اكتب ملاحظاتك لهذه اللقطة، أو اتركها فارغة للكتابة اليدوية..." oninput="updateShotComment(${idx}, this.value)">${shot.comment || ''}</textarea>
+            </div>
+
+            <!-- Actions -->
+            <div class="shot-actions">
+              <span style="font-size: 11px; color: var(--text-muted);">لقطة #${idx + 1} (${dtBadge})</span>
+              <button class="btn-del" onclick="deleteShot(${idx})">🗑️ حذف اللقطة</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      updateIncludedCount();
+      updateActiveCardUI(activePreviewShotId || currentMapYear);
+    }
+
+    function toggleIncludeShot(idx) {
+      capturedShots[idx].included = !capturedShots[idx].included;
+      renderShotsGrid();
+    }
+
+    function updateShotComment(idx, val) {
+      capturedShots[idx].comment = val;
+    }
+
+    function deleteShot(idx) {
+      if (capturedShots[idx] && capturedShots[idx].id === activePreviewShotId) {
+        activePreviewShotId = null;
+        const indicator = document.getElementById('mapPreviewIndicator');
+        if (indicator) indicator.style.display = 'none';
+      }
+      capturedShots.splice(idx, 1);
+      renderShotsGrid();
+    }
+
+    function updateIncludedCount() {
+      const incCount = capturedShots.filter(s => s.included).length;
+      document.getElementById('includedShotsCount').textContent = incCount;
+    }
+
+    async function generateReport() {
+      if (!currentParcel) return;
+      const included = capturedShots.filter(s => s.included);
+      if (included.length === 0) {
+        alert('تنبيه: لم يتم تضمين أي لقطة في التقرير!\nيرجى الضغط على زر "تضمين في التقرير" للقطات المراد إدراجها أولاً.');
+        return;
+      }
+
+      const btn = document.getElementById('btnGenerate');
+      btn.disabled = true;
+      btn.innerHTML = `<span>⏳</span> جاري إعداد التقرير (${included.length} لقطة)...`;
+
+      if (currentParcel) {
+        currentParcel.passes_count = distinctPassesCount;
+      }
+
+      try {
+        const res = await fetch('/api/generate-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            parcel: currentParcel,
+            shots: capturedShots,
+            signatures: {
+              director: "م / السيد زين العابدين",
+              manager: "م / محمد مصطفى"
+            }
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const banner = document.getElementById('bannerSuccess');
+          banner.style.display = 'flex';
+          document.getElementById('successDetails').textContent = `تم إنشاء التقرير بنجاح بداخل مجلد: ${data.folder_path} (شمل ${data.total_years} لقطة معتمدة)`;
+          banner.scrollIntoView({ behavior: 'smooth' });
+        } else {
+          alert('خطأ في إنشاء التقرير: ' + data.error);
+        }
+      } catch (e) {
+        alert('حدث خطأ: ' + e);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>📄</span> إصدار تقرير التغيرات المكانية الشامل (.docx)`;
+      }
+    }
+  </script>
+</body>
+</html>

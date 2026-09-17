@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>محمود عبد الرحمن السيد حسن</name>
+    <description>رفع مساحي ورصد تغيرات مكانية - المساحة: 1801.85 م²</description>
+    
+    <Style id="parcelStyle">
+      <LineStyle>
+        <color>ff0000ff</color>
+        <width>4</width>
+      </LineStyle>
+      <PolyStyle>
+        <color>440000ff</color>
+      </PolyStyle>
+    </Style>
+
+    <Placemark>
+      <name>محمود عبد الرحمن السيد حسن</name>
+      <description>المساحة: 1801.85 م²</description>
+      <styleUrl>#parcelStyle</styleUrl>
+      <Polygon>
+        <extrude>1</extrude>
+        <altitudeMode>clampToGround</altitudeMode>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              31.38179004,31.05113557,0 31.38272183,31.05111248,0 31.38276102,31.05093184,0 31.38180129,31.05095493,0 31.38179004,31.05113557,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+
+    <LookAt>
+      <longitude>31.382268545</longitude>
+      <latitude>31.051033705000002</latitude>
+      <altitude>0</altitude>
+      <heading>0</heading>
+      <tilt>0</tilt>
+      <range>350</range>
+      <altitudeMode>clampToGround</altitudeMode>
+    </LookAt>
+  </Document>
+</kml>
