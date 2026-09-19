@@ -1,0 +1,194 @@
+/* Styles for Google Earth Web Survey Injected Overlay */
+
+#earth-survey-hud-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 9999999;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  direction: rtl;
+}
+
+/* Floating Control Dock */
+.earth-dock-container {
+  position: absolute;
+  top: 18px;
+  right: 68px; /* Beside Google Earth search / top bar */
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(14, 165, 233, 0.2);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+  color: #f8fafc;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+.earth-dock-container:hover {
+  border-color: rgba(56, 189, 248, 0.7);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7), 0 0 22px rgba(14, 165, 233, 0.35);
+}
+
+.earth-dock-badge {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.earth-dock-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+}
+
+.earth-dock-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #38bdf8;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.earth-dock-sub {
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+.earth-dock-btn {
+  background: rgba(30, 41, 59, 0.9);
+  color: #f1f5f9;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.earth-dock-btn:hover {
+  background: rgba(51, 65, 85, 0.95);
+  border-color: #38bdf8;
+  color: #38bdf8;
+  transform: translateY(-1px);
+}
+
+.earth-dock-btn.btn-capture {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-color: #f87171;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
+}
+
+.earth-dock-btn.btn-capture:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.5);
+}
+
+.earth-dock-select {
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Central Parcel SVG Overlay */
+.earth-parcel-svg-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* North Compass Indicator */
+.earth-north-arrow {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  color: #38bdf8;
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.earth-north-arrow svg {
+  width: 18px;
+  height: 18px;
+  fill: #ef4444;
+}
+
+/* Information Stamp Bar (Header for captures) */
+.earth-capture-stamp {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  border-radius: 10px;
+  padding: 6px 20px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  pointer-events: auto;
+}
+
+.earth-capture-stamp span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.earth-capture-stamp .highlight {
+  color: #38bdf8;
+}
+
+.earth-capture-stamp .area-tag {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+}

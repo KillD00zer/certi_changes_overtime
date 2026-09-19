@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>منظومة رصد المتغيرات المكانية - Google Earth</title>
+  <link rel="stylesheet" href="panel.css">
+  
+  <!-- Standalone Bundled Libraries (Offline Capable) -->
+  <script src="../libs/proj4.js"></script>
+  <script src="../libs/xlsx.full.min.js"></script>
+  <script src="../libs/docx.umd.js"></script>
+  <script src="../libs/FileSaver.min.js"></script>
+  
+  <!-- Geo Engine & Docx Builder -->
+  <script src="../scripts/geo_engine.js"></script>
+  <script src="../scripts/docx_builder.js"></script>
+</head>
+<body>
+
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="header-brand">
+      <img src="../icons/icon48.png" alt="Logo" class="header-logo">
+      <div class="header-titles">
+        <h1>منظومة المتغيرات المكانية</h1>
+        <p>Google Earth Web Cadastral Suite (DUDC)</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="btn-reset-all" class="btn-reset-header" title="مسح كافة البيانات وتفريغ النموذج لمعاملة جديدة">
+        <span>🗑️ تفريغ (Reset)</span>
+      </button>
+      <span class="version-badge">v1.0</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="panel-main">
+
+    <!-- Section 1: Survey Upload & Data Input -->
+    <section class="card section-upload">
+      <div class="card-title">
+        <span class="title-icon">📂</span>
+        <h2>1. رفع ملف الإحداثيات المساحية</h2>
+      </div>
+
+      <div id="dropzone" class="dropzone">
+        <span class="dropzone-icon">📥</span>
+        <p class="dropzone-text">اسحب وأفلت جدول الرفع المساحي هنا</p>
+        <p class="dropzone-sub">يدعم جداول ArcGIS بصيغ Excel (.xlsx, .xls) أو CSV</p>
+        <label for="file-input" class="btn btn-secondary btn-file">
+          <span>استعراض الملفات...</span>
+          <input type="file" id="file-input" accept=".csv, .xlsx, .xls">
+        </label>
+      </div>
+
+      <!-- Quick Samples -->
+      <div class="samples-bar">
+        <span class="samples-label">⚡ تجربة فورية:</span>
+        <button id="btn-sample-ghazal" class="chip chip-sample" title="تحميل عينة WGS84 لجمال غزال بالمطرية">
+          جمال غزال (WGS84)
+        </button>
+        <button id="btn-sample-tanakh" class="chip chip-sample" title="تحميل عينة الحزام الأحمر لطناح بالمنصورة">
+          طناح (Red Belt)
+        </button>
+      </div>
+
+      <!-- Citizen Metadata Fields -->
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="inp-name">اسم مقدم الطلب</label>
+          <input type="text" id="inp-name" placeholder="مثال: جمال حسنين غزال">
+        </div>
+        <div class="form-group">
+          <label for="inp-natid">الرقم القومي</label>
+          <input type="text" id="inp-natid" placeholder="الرقم القومي (14 رقم)">
+        </div>
+        <div class="form-group">
+          <label for="inp-center">المركز / المدينة</label>
+          <input type="text" id="inp-center" placeholder="المنصورة / المطرية...">
+        </div>
+        <div class="form-group">
+          <label for="inp-village">القرية / الحوض</label>
+          <input type="text" id="inp-village" placeholder="اسم القرية أو الحوض">
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Parcel Metrics & Google Earth Controls -->
+    <section id="section-parcel" class="card section-parcel" style="display: none;">
+      <div class="card-title">
+        <span class="title-icon">📐</span>
+        <h2>2. المضلع والتحكم في Google Earth</h2>
+      </div>
+
+      <!-- Metrics Display -->
+      <div class="metrics-grid">
+        <div class="metric-item">
+          <span class="metric-label">المساحة المحسوبة</span>
+          <span id="metric-area" class="metric-val highlight-red">0.00 م²</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">المحيط الجيوديسي</span>
+          <span id="metric-perimeter" class="metric-val">0.00 م</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">عدد الأركان</span>
+          <span id="metric-vertices" class="metric-val">0</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">نظام الإحداثيات</span>
+          <span id="metric-crs" class="metric-val highlight-blue">WGS84</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons-grid">
+        <button id="btn-fly-earth" class="btn btn-primary btn-glow full-span">
+          <span>🌍 فتح والانتقال في Google Earth</span>
+        </button>
+        <button id="btn-center-camera" class="btn btn-secondary">
+          <span>🎯 توسيط الكاميرا</span>
+        </button>
+        <button id="btn-toggle-poly" class="btn btn-secondary">
+          <span>👁️ إظهار / إخفاء المضلع</span>
+        </button>
+        <button id="btn-export-kml" class="btn btn-secondary full-span">
+          <span>💾 تصدير KML</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Section 3: Timeline Snapshot Capture -->
+    <section id="section-capture" class="card section-capture" style="display: none;">
+      <div class="card-title">
+        <span class="title-icon">🛰️</span>
+        <h2>3. توثيق الأقمار الصناعية التاريخية</h2>
+      </div>
+
+      <p class="guide-text">
+        قم بتمكين <strong>الصور التاريخية (Historical Imagery)</strong> داخل Google Earth Web، واختر السنة، ثم التقط الصورة بدقة كاملة:
+      </p>
+
+      <div class="capture-controls">
+        <div class="form-group">
+          <label for="select-capture-year">سنة التصوير الفضائي</label>
+          <select id="select-capture-year" class="form-select">
+            <option value="2026">2026 (أحدث تصوير)</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023" selected>2023 (تطبيق قانون 187)</option>
+            <option value="2022">2022</option>
+            <option value="2021">2021</option>
+            <option value="2020">2020</option>
+            <option value="2019">2019 (تطبيق قانون 17)</option>
+            <option value="2018">2018</option>
+            <option value="2017">2017 (تطبيق قانون 144)</option>
+            <option value="2016">2016</option>
+            <option value="2015">2015</option>
+            <option value="2014">2014</option>
+            <option value="2013">2013</option>
+            <option value="2012">2012</option>
+            <option value="2011">2011</option>
+            <option value="2010">2010</option>
+            <option value="2009">2009</option>
+            <option value="2008">2008</option>
+            <option value="2007">2007</option>
+            <option value="2006">2006</option>
+            <option value="2005">2005</option>
+            <option value="2004">2004</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="select-inspect-status">الحالة الإنشائية للقطعة</label>
+          <select id="select-inspect-status" class="form-select">
+            <option value="" selected>-- (اختياري / غير محدد) --</option>
+            <option value="أرض فضاء / لم يطرأ تغيير إنشائي">أرض فضاء / لم يطرأ تغيير إنشائي</option>
+            <option value="تشوين مواد بناء وتجهيز الموقع">تشوين مواد بناء وتجهيز الموقع</option>
+            <option value="صب قواعد خرسانية وسملات">صب قواعد خرسانية وسملات</option>
+            <option value="أعمدة وسقف الدور الأرضي">أعمدة وسقف الدور الأرضي</option>
+            <option value="مبنى قائم مكتمل ومأهول">مبنى قائم مكتمل ومأهول</option>
+            <option value="تعلية أدوار متكررة جديدة">تعلية أدوار متكررة جديدة</option>
+          </select>
+        </div>
+
+        <div class="form-group full-width">
+          <label for="inp-inspect-notes">ملاحظات المعاينة الفنية</label>
+          <input type="text" id="inp-inspect-notes" placeholder="ملاحظات توثيقية إضافية خاصة بهذه السنة...">
+        </div>
+
+        <button id="btn-capture-shot" class="btn btn-danger full-width btn-glow-red">
+          <span>📸 التقاط لقطة القمر الصناعي الآن وتوثيقها</span>
+        </button>
+
+        <!-- Fast Capture Tip Banner -->
+        <div class="capture-shortcut-tip">
+          <div class="tip-badge">⚡ طرق التقاط فورية:</div>
+          <div class="tip-text">
+            <span>• اضغط على الخريطة ثم <code>Ctrl + Shift + S</code></span>
+            <span>• أو كليك يمين على الخريطة واختر <strong>"📸 التقاط خريطة Google Earth"</strong></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Captured Timeline Gallery -->
+    <section id="section-gallery" class="card section-gallery" style="display: none;">
+      <div class="card-title">
+        <span class="title-icon">🖼️</span>
+        <h2>4. سجل اللقطات الموثقة (<span id="gallery-count">0</span>)</h2>
+      </div>
+
+      <div id="shots-container" class="shots-container">
+        <!-- Dynamic Shot Cards -->
+      </div>
+    </section>
+
+    <!-- Section 5: Committee Signatures & Official DOCX Export -->
+    <section id="section-export" class="card section-export" style="display: none;">
+      <div class="card-title">
+        <span class="title-icon">📄</span>
+        <h2>5. اعتماد وتصدير تقرير Word الرسمي</h2>
+      </div>
+
+      <div class="committee-grid">
+        <div class="form-group">
+          <label for="inp-surveyor">فني المساحة</label>
+          <input type="text" id="inp-surveyor" value="م / فني الرفع المساحي">
+        </div>
+        <div class="form-group">
+          <label for="inp-reviewer">مراجع المتغيرات المكانية</label>
+          <input type="text" id="inp-reviewer" value="م / مراجع المتغيرات المكانية">
+        </div>
+        <div class="form-group full-width">
+          <label for="inp-director">مدير مركز معلومات شبكات المرافق</label>
+          <input type="text" id="inp-director" value="م / مدير عام المركز">
+        </div>
+      </div>
+
+      <button id="btn-generate-docx" class="btn btn-success full-width btn-glow-green">
+        <span>📄 إنشاء وتحميل تقرير Word المعتمد (.docx)</span>
+      </button>
+    </section>
+
+  </main>
+
+  <!-- Notification Toast Container -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Panel Script -->
+  <script src="panel.js"></script>
+</body>
+</html>
