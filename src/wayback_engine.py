@@ -216,6 +216,48 @@ def lonlat_to_pixels(lon, lat, zoom):
     return x, y
 
 
+_PARCEL_WAYBACK_ZOOM_CACHE = {}
+
+
+def get_best_wayback_zoom(parcel, release_info=None):
+    """
+    Checks whether Zoom 19 is available natively on Esri Wayback servers for this parcel.
+    If Zoom 19 returns 404 (e.g. coastal, rural or outlying regions),
+    falls back cleanly to Zoom 18 (which has full multi-temporal coverage).
+    """
+    verts = parcel.get("vertices", [])
+    if not verts:
+        return 18
+
+    c_lon = sum(v["lon"] for v in verts) / len(verts)
+    c_lat = sum(v["lat"] for v in verts) / len(verts)
+
+    cache_key = (round(c_lon, 4), round(c_lat, 4))
+    if cache_key in _PARCEL_WAYBACK_ZOOM_CACHE:
+        return _PARCEL_WAYBACK_ZOOM_CACHE[cache_key]
+
+    tmpl = None
+    if release_info and release_info.get("tile_url_template"):
+        tmpl = release_info["tile_url_template"]
+    else:
+        tmpl = "https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/10842/{z}/{y}/{x}"
+
+    # Probe zoom 19
+    tx, ty = lonlat_to_tile(c_lon, c_lat, 19)
+    url_19 = tmpl.format(z=19, x=tx, y=ty)
+    req = urllib.request.Request(url_19, headers=HEADERS)
+    try:
+        with urllib.request.urlopen(req, timeout=3, context=SSL_CTX) as resp:
+            if resp.status == 200:
+                _PARCEL_WAYBACK_ZOOM_CACHE[cache_key] = 19
+                return 19
+    except Exception:
+        pass
+
+    _PARCEL_WAYBACK_ZOOM_CACHE[cache_key] = 18
+    return 18
+
+
 def determine_zoom(stated_area_m2):
     """
     Selects high-resolution zoom level tailored for parcel size.
@@ -255,12 +297,10 @@ def get_system_font(size=14, bold=False):
 def render_yearly_satellite_image(parcel, release_info, output_path, custom_bounds=None, custom_zoom=None):
     """
     Renders a high-resolution satellite imagery snapshot for the given parcel and Wayback release.
-    Features:
-    - 40% contextual margin for surrounding roads and neighboring buildings.
-    - Semi-transparent red parcel fill + bold 4px perimeter stroke + green vertex nodes.
-    - Sleek dark header badge showing the Year and exact Capture Date.
-    - North arrow widget.
-    - Saves output as JPEG at 95% quality.
+    Balanced scale:
+    - Red parcel boundary occupies ~30-40% of the frame, cleanly centered.
+    - Streets, neighbors, and context are clearly visible.
+    - Automatic fallback to Zoom 18 if Zoom 19 is not supported by Esri for this area.
     """
     verts = parcel["vertices"]
     lons = [v["lon"] for v in verts]
@@ -274,20 +314,23 @@ def render_yearly_satellite_image(parcel, release_info, output_path, custom_boun
     else:
         orig_min_lon, orig_max_lon = min(lons), max(lons)
         orig_min_lat, orig_max_lat = min(lats), max(lats)
-        span_lon = max(orig_max_lon - orig_min_lon, 0.0003)
-        span_lat = max(orig_max_lat - orig_min_lat, 0.0003)
-        pad_lon = span_lon * 0.40
-        pad_lat = span_lat * 0.40
+        span_lon = orig_max_lon - orig_min_lon
+        span_lat = orig_max_lat - orig_min_lat
+
+        # Balanced scale context margin:
+        pad_lon = max(span_lon * 0.65, 0.00018)
+        pad_lat = max(span_lat * 0.65, 0.00018)
         min_lon = orig_min_lon - pad_lon
         max_lon = orig_max_lon + pad_lon
         min_lat = orig_min_lat - pad_lat
         max_lat = orig_max_lat + pad_lat
 
-    zoom = custom_zoom or determine_zoom(parcel.get("stated_area_m2", 500))
-    zoom = max(15, min(19, zoom))
+    # Automatically detect best native zoom supported by Esri for this location (18 or 19)
+    best_native_zoom = get_best_wayback_zoom(parcel, release_info)
+    zoom = custom_zoom or best_native_zoom
+    zoom = min(best_native_zoom, zoom)
 
-
-    # Tile coordinates (capped at zoom 19 max)
+    # Tile coordinates
     min_tx, min_ty = lonlat_to_tile(min_lon, max_lat, zoom)
     max_tx, max_ty = lonlat_to_tile(max_lon, min_lat, zoom)
 
@@ -297,11 +340,11 @@ def render_yearly_satellite_image(parcel, release_info, output_path, custom_boun
         min_tx, min_ty = lonlat_to_tile(min_lon, max_lat, zoom)
         max_tx, max_ty = lonlat_to_tile(max_lon, min_lat, zoom)
 
-    # Ensure minimum 3x3 tiles
-    while (max_tx - min_tx + 1) < 3:
+    # Ensure minimum 2x2 tiles
+    while (max_tx - min_tx + 1) < 2:
         min_tx -= 1
         max_tx += 1
-    while (max_ty - min_ty + 1) < 3:
+    while (max_ty - min_ty + 1) < 2:
         min_ty -= 1
         max_ty += 1
 
@@ -328,14 +371,41 @@ def render_yearly_satellite_image(parcel, release_info, output_path, custom_boun
             except Exception:
                 pass
 
-    # Project parcel vertices to canvas coordinates
+    # Project coordinates and precision crop to targeted framing
     base_px = min_tx * 256.0
     base_py = min_ty * 256.0
+
+    c_x1, c_y1 = lonlat_to_pixels(min_lon, max_lat, zoom)
+    c_x2, c_y2 = lonlat_to_pixels(max_lon, min_lat, zoom)
+    crop_box = (
+        max(0, int(c_x1 - base_px)),
+        max(0, int(c_y1 - base_py)),
+        min(stitched.width, int(c_x2 - base_px)),
+        min(stitched.height, int(c_y2 - base_py))
+    )
+    crop_w = crop_box[2] - crop_box[0]
+    crop_h = crop_box[3] - crop_box[1]
+
+    crop_offset_x = 0
+    crop_offset_y = 0
+    scale_factor = 1.0
+
+    if crop_w > 40 and crop_h > 40:
+        stitched = stitched.crop(crop_box)
+        # Balanced presentation width around 720px
+        scale_factor = max(1.0, 720.0 / crop_w)
+        new_w = int(round(crop_w * scale_factor))
+        new_h = int(round(crop_h * scale_factor))
+        stitched = stitched.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        crop_offset_x = crop_box[0]
+        crop_offset_y = crop_box[1]
 
     pixel_poly = []
     for v in verts:
         gx, gy = lonlat_to_pixels(v["lon"], v["lat"], zoom)
-        pixel_poly.append((gx - base_px, gy - base_py))
+        px = (gx - base_px - crop_offset_x) * scale_factor
+        py = (gy - base_py - crop_offset_y) * scale_factor
+        pixel_poly.append((px, py))
 
     # Create transparent overlay for annotations
     overlay = Image.new('RGBA', stitched.size, (255, 255, 255, 0))

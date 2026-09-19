@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>جمال حسنين محمد عبده غزال</name>
+    <description>رفع مساحي ورصد تغيرات مكانية - المساحة: 124.79 م²</description>
+    
+    <Style id="parcelStyle">
+      <LineStyle>
+        <color>ff0000ff</color>
+        <width>4</width>
+      </LineStyle>
+      <PolyStyle>
+        <color>440000ff</color>
+      </PolyStyle>
+    </Style>
+
+    <Placemark>
+      <name>جمال حسنين محمد عبده غزال</name>
+      <description>المساحة: 124.79 م²</description>
+      <styleUrl>#parcelStyle</styleUrl>
+      <Polygon>
+        <extrude>1</extrude>
+        <altitudeMode>clampToGround</altitudeMode>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              31.92628855998648,31.161986168188,0 31.926418539951257,31.161982196959595,0 31.92641419596673,31.16189151411828,0 31.926284185682054,31.161895486895737,0 31.92628855998648,31.161986168188,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+
+    <LookAt>
+      <longitude>31.92635137039663</longitude>
+      <latitude>31.161938841540405</latitude>
+      <altitude>0</altitude>
+      <heading>0</heading>
+      <tilt>0</tilt>
+      <range>350</range>
+      <altitudeMode>clampToGround</altitudeMode>
+    </LookAt>
+  </Document>
+</kml>

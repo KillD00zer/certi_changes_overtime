@@ -1081,7 +1081,10 @@
 
     function resetMapToParcel() {
       if (leafletMap && parcelPolygonLayer) {
-        leafletMap.fitBounds(parcelPolygonLayer.getBounds(), { padding: [60, 60] });
+        leafletMap.fitBounds(parcelPolygonLayer.getBounds(), {
+          padding: [55, 55],
+          maxZoom: 19
+        });
       }
     }
 
@@ -1130,18 +1133,12 @@
         }
       }
 
-      let maxZoom = 19;
       let statusHtml = '';
 
       if (currentMapSource === 'wayback' && tileUrl) {
-        maxZoom = 19;
-        if (leafletMap.getZoom() > 19) {
-          leafletMap.setZoom(19);
-        }
         statusHtml = `<span>🛰️</span> <b>أقمار ماكسار التاريخية (Wayback)</b> | <b>${labelTitle}</b> (دقة فائقة sub-meter)`;
       } else {
         tileUrl = 'https://mt{s}.google.com/vt/lyrs=s&hl=ar&x={x}&y={y}&z={z}';
-        maxZoom = 20;
         statusHtml = `<span>🗺️</span> <b>Google Maps Satellite</b> | سنة <b>${y}</b>`;
       }
 
@@ -1149,9 +1146,13 @@
         leafletMap.removeLayer(currentTileLayer);
       }
 
+      const wbNative = (currentParcel && currentParcel.wayback_max_zoom) ? currentParcel.wayback_max_zoom : 18;
+      const nativeZ = tileUrl.includes('google.com') ? 21 : wbNative;
+
       currentTileLayer = L.tileLayer(tileUrl, {
         subdomains: ['0', '1', '2', '3'],
-        maxZoom: maxZoom
+        maxNativeZoom: nativeZ,
+        maxZoom: 22
       }).addTo(leafletMap);
 
       currentTileLayer.bringToBack();
@@ -1242,7 +1243,8 @@
       const latlngs = verts.map(v => [v.lat, v.lon]);
 
       leafletMap = L.map('interactiveMap', {
-        attributionControl: false
+        attributionControl: false,
+        maxZoom: 22
       });
 
       parcelPolygonLayer = L.polygon(latlngs, {
@@ -1264,7 +1266,8 @@
       });
 
       leafletMap.fitBounds(parcelPolygonLayer.getBounds(), {
-        padding: [60, 60]
+        padding: [55, 55],
+        maxZoom: 19
       });
     }
 
@@ -1337,9 +1340,13 @@
         leafletMap.removeLayer(currentTileLayer);
       }
 
+      const wbNative = (currentParcel && currentParcel.wayback_max_zoom) ? currentParcel.wayback_max_zoom : 18;
+      const nativeZ = tileUrl.includes('google.com') ? 21 : wbNative;
+
       currentTileLayer = L.tileLayer(tileUrl, {
         subdomains: ['0', '1', '2', '3'],
-        maxZoom: 19
+        maxNativeZoom: nativeZ,
+        maxZoom: 22
       }).addTo(leafletMap);
 
       currentTileLayer.bringToBack();

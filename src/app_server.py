@@ -27,7 +27,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(BASE_DIR)
 
 from geo_parser import parse_survey_file
-from wayback_engine import get_yearly_releases, render_yearly_satellite_image, get_distinct_parcel_passes
+from wayback_engine import get_yearly_releases, render_yearly_satellite_image, get_distinct_parcel_passes, get_best_wayback_zoom
 from google_satellite_engine import render_google_satellite_image
 from docx_timeline_builder import build_timeline_report
 from kml_generator import generate_parcel_kml
@@ -148,6 +148,12 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
                 releases = get_yearly_releases(start_year)
                 all_releases = get_yearly_releases(2014)
                 distinct_passes = get_distinct_parcel_passes(parcel, start_year)
+                best_wb = 18
+                if distinct_passes:
+                    best_wb = get_best_wayback_zoom(parcel, distinct_passes[0])
+                elif releases:
+                    best_wb = get_best_wayback_zoom(parcel, releases[0])
+                parcel["wayback_max_zoom"] = best_wb
                 self.send_json({
                     "success": True,
                     "parcel": parcel,
@@ -209,6 +215,12 @@ class AppRequestHandler(SimpleHTTPRequestHandler):
                     releases = get_yearly_releases(start_year)
                     all_releases = get_yearly_releases(2014)
                     distinct_passes = get_distinct_parcel_passes(parcel, start_year)
+                    best_wb = 18
+                    if distinct_passes:
+                        best_wb = get_best_wayback_zoom(parcel, distinct_passes[0])
+                    elif releases:
+                        best_wb = get_best_wayback_zoom(parcel, releases[0])
+                    parcel["wayback_max_zoom"] = best_wb
                     self.send_json({
                         "success": True,
                         "parcel": parcel,

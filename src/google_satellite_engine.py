@@ -41,15 +41,23 @@ def lonlat_to_pixels(lon, lat, zoom):
 
 
 def determine_zoom(stated_area_m2):
-    """Selects optimal Google Maps zoom level (up to zoom 20 for sharp detail)."""
-    if stated_area_m2 < 300:
+    """
+    Selects optimal Google Maps zoom level (up to zoom 21 for sharp sub-meter detail on small parcels).
+    Matches production configuration from SPV and DUDC projects.
+    """
+    try:
+        area_val = float(stated_area_m2)
+    except (ValueError, TypeError):
+        area_val = 500.0
+
+    if area_val < 250:
+        return 21
+    elif area_val < 2500:
         return 20
-    elif stated_area_m2 < 2500:
+    elif area_val < 10000:
         return 19
-    elif stated_area_m2 < 12000:
-        return 18
     else:
-        return 17
+        return 18
 
 
 def fetch_google_tile(x, y, z):
@@ -80,7 +88,7 @@ def render_google_satellite_image(parcel, output_path, label_text="Google Maps S
     """
     Renders a high-resolution Google Maps satellite snapshot with the parcel overlay.
     custom_bounds: optional dict {"min_lon": ..., "max_lon": ..., "min_lat": ..., "max_lat": ...}
-    custom_zoom: optional int (15 to 20)
+    custom_zoom: optional int (15 to 21)
     """
     verts = parcel.get("vertices", [])
     lons = [v["lon"] for v in verts]
@@ -94,17 +102,30 @@ def render_google_satellite_image(parcel, output_path, label_text="Google Maps S
     else:
         orig_min_lon, orig_max_lon = min(lons), max(lons)
         orig_min_lat, orig_max_lat = min(lats), max(lats)
-        span_lon = max(orig_max_lon - orig_min_lon, 0.0003)
-        span_lat = max(orig_max_lat - orig_min_lat, 0.0003)
-        pad_lon = span_lon * 0.40
-        pad_lat = span_lat * 0.40
+        span_lon = orig_max_lon - orig_min_lon
+        span_lat = orig_max_lat - orig_min_lat
+        stated_a = parcel.get("stated_area_m2", 500)
+        if stated_a < 250:
+            min_span = 0.00016
+            pad_ratio = 0.38
+        elif stated_a < 2500:
+            min_span = 0.00022
+            pad_ratio = 0.38
+        else:
+            min_span = 0.00030
+            pad_ratio = 0.40
+
+        eff_span_lon = max(span_lon, min_span)
+        eff_span_lat = max(span_lat, min_span)
+        pad_lon = eff_span_lon * pad_ratio
+        pad_lat = eff_span_lat * pad_ratio
         min_lon = orig_min_lon - pad_lon
         max_lon = orig_max_lon + pad_lon
         min_lat = orig_min_lat - pad_lat
         max_lat = orig_max_lat + pad_lat
 
     zoom = custom_zoom or determine_zoom(parcel.get("stated_area_m2", 500))
-    zoom = max(15, min(20, zoom))
+    zoom = max(15, min(21, zoom))
 
     # Tile coordinates
     min_tx, min_ty = lonlat_to_tile(min_lon, max_lat, zoom)
@@ -146,10 +167,37 @@ def render_google_satellite_image(parcel, output_path, label_text="Google Maps S
     base_px = min_tx * 256.0
     base_py = min_ty * 256.0
 
+    crop_offset_x = 0
+    crop_offset_y = 0
+    scale_factor = 1.0
+
+    if custom_bounds and "min_lon" in custom_bounds:
+        c_x1, c_y1 = lonlat_to_pixels(custom_bounds["min_lon"], custom_bounds["max_lat"], zoom)
+        c_x2, c_y2 = lonlat_to_pixels(custom_bounds["max_lon"], custom_bounds["min_lat"], zoom)
+        crop_box = (
+            max(0, int(c_x1 - base_px)),
+            max(0, int(c_y1 - base_py)),
+            min(stitched.width, int(c_x2 - base_px)),
+            min(stitched.height, int(c_y2 - base_py))
+        )
+        crop_w = crop_box[2] - crop_box[0]
+        crop_h = crop_box[3] - crop_box[1]
+        if crop_w > 50 and crop_h > 50:
+            stitched = stitched.crop(crop_box)
+            if crop_w < 700 or crop_h < 500:
+                scale_factor = max(1.2, min(3.0, 750.0 / max(crop_w, crop_h)))
+                new_w = int(round(crop_w * scale_factor))
+                new_h = int(round(crop_h * scale_factor))
+                stitched = stitched.resize((new_w, new_h), Image.Resampling.LANCZOS)
+            crop_offset_x = crop_box[0]
+            crop_offset_y = crop_box[1]
+
     pixel_poly = []
     for v in verts:
         gx, gy = lonlat_to_pixels(v["lon"], v["lat"], zoom)
-        pixel_poly.append((gx - base_px, gy - base_py))
+        px = (gx - base_px - crop_offset_x) * scale_factor
+        py = (gy - base_py - crop_offset_y) * scale_factor
+        pixel_poly.append((px, py))
 
     # Drawing overlay
     overlay = Image.new('RGBA', stitched.size, (255, 255, 255, 0))
