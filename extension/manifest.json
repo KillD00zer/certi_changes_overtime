@@ -29,7 +29,8 @@
     "storage",
     "scripting",
     "sidePanel",
-    "contextMenus"
+    "contextMenus",
+    "downloads"
   ],
   "commands": {
     "capture-map": {
@@ -64,7 +65,8 @@
       "resources": [
         "icons/*",
         "libs/*",
-        "styles/*"
+        "styles/*",
+        "preview/*"
       ],
       "matches": [
         "https://earth.google.com/*"

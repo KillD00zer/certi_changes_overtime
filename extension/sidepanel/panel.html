@@ -9,11 +9,13 @@
   <!-- Standalone Bundled Libraries (Offline Capable) -->
   <script src="../libs/proj4.js"></script>
   <script src="../libs/xlsx.full.min.js"></script>
+  <script src="../libs/jszip.min.js"></script>
   <script src="../libs/docx.umd.js"></script>
   <script src="../libs/FileSaver.min.js"></script>
   
-  <!-- Geo Engine & Docx Builder -->
+  <!-- Geo Engine, Template Assets & Docx Builder -->
   <script src="../scripts/geo_engine.js"></script>
+  <script src="../scripts/template_assets.js"></script>
   <script src="../scripts/docx_builder.js"></script>
 </head>
 <body>
@@ -31,58 +33,174 @@
       <button id="btn-reset-all" class="btn-reset-header" title="مسح كافة البيانات وتفريغ النموذج لمعاملة جديدة">
         <span>🗑️ تفريغ (Reset)</span>
       </button>
-      <span class="version-badge">v1.0</span>
+      <span class="version-badge">v2.0</span>
     </div>
   </header>
 
   <!-- Main Container -->
   <main class="panel-main">
 
-    <!-- Section 1: Survey Upload & Data Input -->
+    <!-- Section 1: Survey Upload & Data Input (With Tabs) -->
     <section class="card section-upload">
       <div class="card-title">
         <span class="title-icon">📂</span>
-        <h2>1. رفع ملف الإحداثيات المساحية</h2>
+        <h2>1. بيانات المعاملة والرفع المساحي</h2>
       </div>
 
-      <div id="dropzone" class="dropzone">
-        <span class="dropzone-icon">📥</span>
-        <p class="dropzone-text">اسحب وأفلت جدول الرفع المساحي هنا</p>
-        <p class="dropzone-sub">يدعم جداول ArcGIS بصيغ Excel (.xlsx, .xls) أو CSV</p>
-        <label for="file-input" class="btn btn-secondary btn-file">
-          <span>استعراض الملفات...</span>
-          <input type="file" id="file-input" accept=".csv, .xlsx, .xls">
-        </label>
-      </div>
-
-      <!-- Quick Samples -->
-      <div class="samples-bar">
-        <span class="samples-label">⚡ تجربة فورية:</span>
-        <button id="btn-sample-ghazal" class="chip chip-sample" title="تحميل عينة WGS84 لجمال غزال بالمطرية">
-          جمال غزال (WGS84)
+      <!-- Navigation Tabs -->
+      <div class="tabs-nav">
+        <button id="tab-btn-upload" class="tab-btn active" type="button">
+          <span>📁 رفع ملف مساحي</span>
         </button>
-        <button id="btn-sample-tanakh" class="chip chip-sample" title="تحميل عينة الحزام الأحمر لطناح بالمنصورة">
-          طناح (Red Belt)
+        <button id="tab-btn-manual" class="tab-btn" type="button">
+          <span>📝 إدخال يدوي وتصدير CSV</span>
         </button>
       </div>
 
-      <!-- Citizen Metadata Fields -->
-      <div class="form-grid">
-        <div class="form-group">
-          <label for="inp-name">اسم مقدم الطلب</label>
-          <input type="text" id="inp-name" placeholder="مثال: جمال حسنين غزال">
+      <!-- TAB 1: Upload File -->
+      <div id="tab-view-upload" class="tab-view">
+        <div id="dropzone" class="dropzone">
+          <span class="dropzone-icon">📥</span>
+          <p class="dropzone-text">اسحب وأفلت جدول الرفع المساحي هنا</p>
+          <p class="dropzone-sub">يدعم جداول ArcGIS بصيغ Excel (.xlsx, .xls) أو CSV</p>
+          <label for="file-input" class="btn btn-secondary btn-file">
+            <span>استعراض الملفات...</span>
+            <input type="file" id="file-input" accept=".csv, .xlsx, .xls">
+          </label>
         </div>
-        <div class="form-group">
-          <label for="inp-natid">الرقم القومي</label>
-          <input type="text" id="inp-natid" placeholder="الرقم القومي (14 رقم)">
+
+        <!-- Quick Samples -->
+        <div class="samples-bar">
+          <span class="samples-label">⚡ عينات للتجربة:</span>
+          <button id="btn-sample-ghazal" class="chip chip-sample" title="تحميل عينة WGS84 لجمال غزال بالمطرية" type="button">
+            جمال غزال (WGS84)
+          </button>
+          <button id="btn-sample-tanakh" class="chip chip-sample" title="تحميل عينة الحزام الأحمر لطناح بالمنصورة" type="button">
+            طناح (Red Belt)
+          </button>
         </div>
-        <div class="form-group">
-          <label for="inp-center">المركز / المدينة</label>
-          <input type="text" id="inp-center" placeholder="المنصورة / المطرية...">
+
+        <!-- Citizen Metadata Fields (Auto-filled or editable) -->
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="inp-name">اسم مقدم الطلب</label>
+            <input type="text" id="inp-name" placeholder="مثال: يحيى عوض محمد عوض">
+          </div>
+          <div class="form-group">
+            <label for="inp-natid">الرقم القومي</label>
+            <input type="text" id="inp-natid" placeholder="الرقم القومي (14 رقم)">
+          </div>
+          <div class="form-group">
+            <label for="inp-center">المركز / المدينة</label>
+            <input type="text" id="inp-center" placeholder="أجا / دكرنس / المنصورة...">
+          </div>
+          <div class="form-group">
+            <label for="inp-village">الوحدة المحلية / الشياخة</label>
+            <input type="text" id="inp-village" placeholder="اسم القرية أو الشياخة">
+          </div>
         </div>
-        <div class="form-group">
-          <label for="inp-village">القرية / الحوض</label>
-          <input type="text" id="inp-village" placeholder="اسم القرية أو الحوض">
+      </div>
+
+      <!-- TAB 2: Manual Data Entry & CSV Builder -->
+      <div id="tab-view-manual" class="tab-view" style="display: none;">
+        <div class="manual-form-grid">
+          <div class="form-group">
+            <label for="inp-man-name">اسم المواطن رباعي *</label>
+            <input type="text" id="inp-man-name" placeholder="مثال: يحيى عوض محمد عوض">
+          </div>
+          <div class="form-group">
+            <label for="inp-man-natid">الرقم القومي (14 رقم)</label>
+            <input type="text" id="inp-man-natid" placeholder="الرقم القومي">
+          </div>
+          <div class="form-group">
+            <label for="inp-man-idno">رقم الطلب / المعاملة</label>
+            <input type="text" id="inp-man-idno" placeholder="مثال: 62644774">
+          </div>
+          <div class="form-group">
+            <label for="inp-man-center">المركز *</label>
+            <input type="text" id="inp-man-center" placeholder="مثال: أجا">
+          </div>
+          <div class="form-group">
+            <label for="inp-man-sheikhah">الوحدة المحلية / الشياخة</label>
+            <input type="text" id="inp-man-sheikhah" placeholder="مثال: نوسا البحر">
+          </div>
+          <div class="form-group">
+            <label for="inp-man-place">العنوان / المكان</label>
+            <input type="text" id="inp-man-place" placeholder="مثال: نوسا البحر ــ أجا">
+          </div>
+          <div class="form-group">
+            <label for="inp-man-activity">نوع النشاط</label>
+            <select id="inp-man-activity" class="form-select">
+              <option value="سكني" selected>سكني</option>
+              <option value="تجاري">تجاري</option>
+              <option value="إداري">إداري</option>
+              <option value="صناعي">صناعي</option>
+              <option value="أخرى">أخرى</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="inp-man-status">حالة المعاينة</label>
+            <input type="text" id="inp-man-status" value="بعد المعاينة">
+          </div>
+          <div class="form-group">
+            <label for="inp-man-gov">المحافظة</label>
+            <input type="text" id="inp-man-gov" value="الدقهلية">
+          </div>
+        </div>
+
+        <!-- Coordinates Input Table Header & Controls -->
+        <div class="points-header-bar">
+          <div class="points-title">
+            <span>📍 أركان الموقع (Coordinates):</span>
+            <span id="points-count-badge" class="badge-count">4 نقاط</span>
+          </div>
+          <div class="points-actions-inline">
+            <button id="btn-add-point-row" class="btn btn-sm btn-secondary" type="button" title="إضافة صف ركن جديد">
+              ➕ إضافة ركن
+            </button>
+            <button id="btn-toggle-paste" class="btn btn-sm btn-secondary" type="button" title="لصق جدول إحداثيات دفع واحدة">
+              📋 لصق جدول
+            </button>
+            <button id="btn-clear-points" class="btn btn-sm btn-danger-outline" type="button" title="مسح كافة الأركان">
+              🗑️ مسح
+            </button>
+          </div>
+        </div>
+
+        <!-- Expandable Quick Paste Box -->
+        <div id="box-paste-coords" class="paste-coords-box" style="display: none;">
+          <label for="txt-paste-coords">الصق الإحداثيات هنا (سطر لكل نقطة: X ثم Y مفصولين بمسافة أو Tab):</label>
+          <textarea id="txt-paste-coords" rows="4" placeholder="31.302407  30.985227&#10;31.302518  30.985164&#10;31.302503  30.985140&#10;31.302392  30.985202"></textarea>
+          <button id="btn-apply-paste" class="btn btn-sm btn-primary" type="button">
+            ✅ تطبيق وتحويل الإحداثيات
+          </button>
+        </div>
+
+        <!-- Interactive Points Table -->
+        <div class="table-container">
+          <table id="tbl-manual-points" class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 40px;">م</th>
+                <th>خط الطول / X (شرق)</th>
+                <th>خط العرض / Y (شمال)</th>
+                <th style="width: 45px;">حذف</th>
+              </tr>
+            </thead>
+            <tbody id="tbl-manual-points-body">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Manual Actions: Export CSV & Connect -->
+        <div class="manual-action-bar">
+          <button id="btn-export-csv-manual" class="btn btn-secondary" type="button" title="تصدير ملف CSV مطابق لنموذج Polygon_1.csv">
+            <span>💾 تصدير ملف Polygon.csv</span>
+          </button>
+          <button id="btn-connect-manual" class="btn btn-primary btn-glow" type="button" title="ربط البيانات بالمنظومة والتحليق في Google Earth">
+            <span>🔗 ربط بالمنظومة (Connect & Fly)</span>
+          </button>
         </div>
       </div>
     </section>
@@ -114,24 +232,37 @@
         </div>
       </div>
 
+      <!-- Overlay Display Mode Selector -->
+      <div class="overlay-mode-box">
+        <span class="overlay-mode-label">نمط الرسم على الخريطة:</span>
+        <div class="overlay-mode-toggle">
+          <button id="btn-mode-poly" class="btn-mode active" type="button" title="عرض حدود المضلع الأحمر مع أرقام الأركان">
+            <span>🟦 مضلع كامل</span>
+          </button>
+          <button id="btn-mode-point" class="btn-mode" type="button" title="عرض نقطة المركز فقط مع اسم المواطن بخط شفاف هادئ">
+            <span>📍 نقطة مركز واسم</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Action Buttons -->
       <div class="action-buttons-grid">
-        <button id="btn-fly-earth" class="btn btn-primary btn-glow full-span">
+        <button id="btn-fly-earth" class="btn btn-primary btn-glow full-span" type="button">
           <span>🌍 فتح والانتقال في Google Earth</span>
         </button>
-        <button id="btn-center-camera" class="btn btn-secondary">
+        <button id="btn-center-camera" class="btn btn-secondary" type="button">
           <span>🎯 توسيط الكاميرا</span>
         </button>
-        <button id="btn-toggle-poly" class="btn btn-secondary">
+        <button id="btn-toggle-poly" class="btn btn-secondary" type="button">
           <span>👁️ إظهار / إخفاء المضلع</span>
         </button>
-        <button id="btn-export-kml" class="btn btn-secondary full-span">
+        <button id="btn-export-kml" class="btn btn-secondary full-span" type="button">
           <span>💾 تصدير KML</span>
         </button>
       </div>
     </section>
 
-    <!-- Section 3: Timeline Snapshot Capture -->
+    <!-- Section 3: Timeline Snapshot Capture (With Month Selector) -->
     <section id="section-capture" class="card section-capture" style="display: none;">
       <div class="card-title">
         <span class="title-icon">🛰️</span>
@@ -139,58 +270,93 @@
       </div>
 
       <p class="guide-text">
-        قم بتمكين <strong>الصور التاريخية (Historical Imagery)</strong> داخل Google Earth Web، واختر السنة، ثم التقط الصورة بدقة كاملة:
+        قم بتمكين <strong>الصور التاريخية (Historical Imagery)</strong> داخل Google Earth Web، واختر السنة والشهر، ثم التقط الصورة بدقة كاملة:
       </p>
 
+      <!-- Limit Indicator Badge -->
+      <div class="shots-limit-bar">
+        <span id="shots-limit-badge" class="badge-shots">اللقطات الموثقة: 0 من 6 (الحد الأقصى)</span>
+      </div>
+
       <div class="capture-controls">
-        <div class="form-group">
-          <label for="select-capture-year">سنة التصوير الفضائي</label>
-          <select id="select-capture-year" class="form-select">
-            <option value="2026">2026 (أحدث تصوير)</option>
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
-            <option value="2023" selected>2023 (تطبيق قانون 187)</option>
-            <option value="2022">2022</option>
-            <option value="2021">2021</option>
-            <option value="2020">2020</option>
-            <option value="2019">2019 (تطبيق قانون 17)</option>
-            <option value="2018">2018</option>
-            <option value="2017">2017 (تطبيق قانون 144)</option>
-            <option value="2016">2016</option>
-            <option value="2015">2015</option>
-            <option value="2014">2014</option>
-            <option value="2013">2013</option>
-            <option value="2012">2012</option>
-            <option value="2011">2011</option>
-            <option value="2010">2010</option>
-            <option value="2009">2009</option>
-            <option value="2008">2008</option>
-            <option value="2007">2007</option>
-            <option value="2006">2006</option>
-            <option value="2005">2005</option>
-            <option value="2004">2004</option>
-          </select>
+        <!-- Date Selector (Year + Month) -->
+        <div class="date-row">
+          <div class="form-group flex-1">
+            <label for="select-capture-year">سنة التصوير</label>
+            <select id="select-capture-year" class="form-select">
+              <option value="2026">2026 (أحدث تصوير)</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+              <option value="2023" selected>2023 (تطبيق قانون 187)</option>
+              <option value="2022">2022</option>
+              <option value="2021">2021</option>
+              <option value="2020">2020</option>
+              <option value="2019">2019 (تطبيق قانون 17)</option>
+              <option value="2018">2018</option>
+              <option value="2017">2017</option>
+              <option value="2016">2016</option>
+              <option value="2015">2015</option>
+              <option value="2014">2014</option>
+              <option value="2013">2013</option>
+              <option value="2012">2012</option>
+              <option value="2011">2011</option>
+              <option value="2010">2010</option>
+              <option value="2009">2009</option>
+              <option value="2008">2008</option>
+              <option value="2007">2007</option>
+              <option value="2006">2006</option>
+              <option value="2005">2005</option>
+              <option value="2004">2004</option>
+            </select>
+          </div>
+
+          <div class="form-group flex-1">
+            <label for="select-capture-month">رقم الشهر (Month)</label>
+            <select id="select-capture-month" class="form-select">
+              <option value="">-- اختياري --</option>
+              <option value="1">1 (يناير)</option>
+              <option value="2">2 (فبراير)</option>
+              <option value="3">3 (مارس)</option>
+              <option value="4">4 (أبريل)</option>
+              <option value="5" selected>5 (مايو)</option>
+              <option value="6">6 (يونيو)</option>
+              <option value="7">7 (يوليو)</option>
+              <option value="8">8 (أغسطس)</option>
+              <option value="9">9 (سبتمبر)</option>
+              <option value="10">10 (أكتوبر)</option>
+              <option value="11">11 (نوفمبر)</option>
+              <option value="12">12 (ديسمبر)</option>
+            </select>
+          </div>
         </div>
 
         <div class="form-group">
-          <label for="select-inspect-status">الحالة الإنشائية للقطعة</label>
+          <label for="select-inspect-status">توصيف الحالة الإنشائية (كومنتات المتغيرات المكانية)</label>
           <select id="select-inspect-status" class="form-select">
-            <option value="" selected>-- (اختياري / غير محدد) --</option>
-            <option value="أرض فضاء / لم يطرأ تغيير إنشائي">أرض فضاء / لم يطرأ تغيير إنشائي</option>
-            <option value="تشوين مواد بناء وتجهيز الموقع">تشوين مواد بناء وتجهيز الموقع</option>
-            <option value="صب قواعد خرسانية وسملات">صب قواعد خرسانية وسملات</option>
-            <option value="أعمدة وسقف الدور الأرضي">أعمدة وسقف الدور الأرضي</option>
-            <option value="مبنى قائم مكتمل ومأهول">مبنى قائم مكتمل ومأهول</option>
-            <option value="تعلية أدوار متكررة جديدة">تعلية أدوار متكررة جديدة</option>
+            <option value="اول لقطة متاحة للمبني" selected>اول لقطة متاحة للمبني</option>
+            <option value="لم يظهر تغير في المبنى حتى">لم يظهر تغير في المبنى حتى</option>
+            <option value="ظهور حوائط">ظهور حوائط</option>
+            <option value="ظهور سقف">ظهور سقف</option>
+            <option value="ظهور اعمدة">ظهور اعمدة</option>
+            <option value="ظهور سقف واعمدة">ظهور سقف واعمدة</option>
+            <option value="ظهور سقف وحوائط">ظهور سقف وحوائط</option>
+            <option value="ظهور تعليه">ظهور تعليه</option>
+            <option value="ظهور تغطية صاج">ظهور تغطية صاج</option>
+            <option value="__custom__">✍️ إدخال يدوي مخصص...</option>
           </select>
+        </div>
+
+        <div id="group-custom-status" class="form-group full-width" style="display: none;">
+          <label for="inp-inspect-status-custom">نص التوصيف المخصص اليدوي *</label>
+          <input type="text" id="inp-inspect-status-custom" placeholder="اكتب التوصيف المطلوب للموقع هنا...">
         </div>
 
         <div class="form-group full-width">
-          <label for="inp-inspect-notes">ملاحظات المعاينة الفنية</label>
-          <input type="text" id="inp-inspect-notes" placeholder="ملاحظات توثيقية إضافية خاصة بهذه السنة...">
+          <label for="inp-inspect-notes">ملاحظات إضافية (اختياري)</label>
+          <input type="text" id="inp-inspect-notes" placeholder="مثال: على جزء من الدور الأول...">
         </div>
 
-        <button id="btn-capture-shot" class="btn btn-danger full-width btn-glow-red">
+        <button id="btn-capture-shot" class="btn btn-danger full-width btn-glow-red" type="button">
           <span>📸 التقاط لقطة القمر الصناعي الآن وتوثيقها</span>
         </button>
 
@@ -209,7 +375,7 @@
     <section id="section-gallery" class="card section-gallery" style="display: none;">
       <div class="card-title">
         <span class="title-icon">🖼️</span>
-        <h2>4. سجل اللقطات الموثقة (<span id="gallery-count">0</span>)</h2>
+        <h2>4. سجل اللقطات الموثقة (<span id="gallery-count">0</span> / 6)</h2>
       </div>
 
       <div id="shots-container" class="shots-container">
@@ -221,26 +387,30 @@
     <section id="section-export" class="card section-export" style="display: none;">
       <div class="card-title">
         <span class="title-icon">📄</span>
-        <h2>5. اعتماد وتصدير تقرير Word الرسمي</h2>
+        <h2>5. اعتماد وتصدير الشهادة الرسمية</h2>
       </div>
 
       <div class="committee-grid">
         <div class="form-group">
-          <label for="inp-surveyor">فني المساحة</label>
-          <input type="text" id="inp-surveyor" value="م / فني الرفع المساحي">
+          <label for="inp-surveyor">مسؤول المتغيرات المكانية</label>
+          <input type="text" id="inp-surveyor" value="مسؤول المتغيرات المكانية">
         </div>
         <div class="form-group">
-          <label for="inp-reviewer">مراجع المتغيرات المكانية</label>
-          <input type="text" id="inp-reviewer" value="م / مراجع المتغيرات المكانية">
+          <label for="inp-director">مدير وحدة المتغيرات المكانية</label>
+          <input type="text" id="inp-director" value="مروة محمد رضوان">
         </div>
         <div class="form-group full-width">
-          <label for="inp-director">مدير مركز معلومات شبكات المرافق</label>
-          <input type="text" id="inp-director" value="م / مدير عام المركز">
+          <label for="inp-reviewer">السكرتير العام للمحافظة (الاعتماد)</label>
+          <input type="text" id="inp-reviewer" value="د / عماد عبدالله احمد">
         </div>
       </div>
 
-      <button id="btn-generate-docx" class="btn btn-success full-width btn-glow-green">
-        <span>📄 إنشاء وتحميل تقرير Word المعتمد (.docx)</span>
+      <button id="btn-preview-pdf" class="btn btn-primary full-width" type="button" style="margin-bottom: 8px; padding: 12px; font-size: 13.5px; background: linear-gradient(135deg, #0284c7, #0369a1); font-weight: 800;">
+        <span>👁️ معاينة وطباعة بيان التسلسل الزمني (PDF)</span>
+      </button>
+
+      <button id="btn-generate-docx" class="btn btn-success full-width btn-glow-green" type="button" style="opacity: 0.85;">
+        <span>📄 تنزيل حزمة Word (.docx) و (.csv)</span>
       </button>
     </section>
 

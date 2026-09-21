@@ -1,0 +1,821 @@
+/* ==========================================================================
+   Dakahlia Governorate Spatial Variables Certificate - Preview & Print CSS
+   Strictly Single A4 Page (Landscape / Portrait)
+   ========================================================================== */
+
+:root {
+  --primary-color: #0f172a;
+  --accent-color: #2563eb;
+  --border-dark: #000000;
+  --border-light: #94a3b8;
+  --bg-table-header: #e2e8f0;
+  --bg-caption: #f1f5f9;
+  --bg-disclaimer: #f8fafc;
+  --font-main: 'Cairo', 'Arial', 'Tahoma', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+body.preview-body {
+  font-family: var(--font-main);
+  background-color: #0f172a;
+  color: #0f172a;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   1. FLOATING TOOLBAR (Screen Only - Hidden on Print)
+   ========================================================================== */
+.preview-toolbar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.toolbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toolbar-icon {
+  width: 38px;
+  height: 38px;
+}
+
+.toolbar-title-box h2 {
+  color: #f8fafc;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.toolbar-title-box p {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: var(--font-main);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.btn-tool-secondary {
+  background: #1e293b;
+  color: #cbd5e1;
+  border-color: #334155;
+}
+
+.btn-tool-secondary:hover {
+  background: #334155;
+  color: #fff;
+  border-color: #64748b;
+}
+
+.btn-tool-primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
+}
+
+.btn-tool-primary:hover {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
+}
+
+.btn-tool-accent {
+  background: rgba(13, 148, 136, 0.25);
+  color: #2dd4bf;
+  border-color: #0d9488;
+}
+
+.btn-tool-accent:hover {
+  background: rgba(13, 148, 136, 0.45);
+  color: #fff;
+  border-color: #14b8a6;
+}
+
+.btn-tool-accent.active {
+  background: linear-gradient(135deg, #0d9488, #0f766e);
+  color: #ffffff;
+  border-color: #2dd4bf;
+  box-shadow: 0 0 12px rgba(45, 212, 191, 0.45);
+}
+
+.print-instruction-banner {
+  width: 95%;
+  max-width: 1150px;
+  margin: 12px auto 0 auto;
+  padding: 8px 16px;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+/* Interactive Dynamic Tuning Toolbar */
+.tuning-bar {
+  width: 95%;
+  max-width: 1150px;
+  margin: 10px auto 0 auto;
+  padding: 8px 16px;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+.tuning-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tuning-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.tuning-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(30, 41, 59, 0.8);
+  padding: 3px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.btn-tune {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #cbd5e1;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.btn-tune:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: #ffffff;
+}
+
+.btn-tune.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.35);
+}
+
+.tuning-slider-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tuning-slider-box input[type="range"] {
+  width: 105px;
+  height: 5px;
+  cursor: pointer;
+  accent-color: #38bdf8;
+}
+
+.tuning-val {
+  font-size: 11px;
+  font-weight: 800;
+  color: #38bdf8;
+  min-width: 38px;
+  text-align: center;
+  background: rgba(30, 41, 59, 0.7);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.tuning-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.btn-tune-reset {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.btn-tune-reset:hover {
+  background: rgba(239, 68, 68, 0.4);
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   2. STAGE & A4 SHEET CONTAINER
+   ========================================================================== */
+.preview-stage {
+  flex: 1;
+  padding: 30px 20px 60px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-x: auto;
+}
+
+/* Landscape: 297mm x 210mm */
+.a4-sheet.landscape {
+  width: 297mm;
+  height: 210mm;
+  max-height: 210mm;
+  padding: 8mm 10mm;
+  background: #ffffff;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Portrait: 210mm x 297mm */
+.a4-sheet.portrait {
+  width: 210mm;
+  height: 297mm;
+  max-height: 297mm;
+  padding: 8mm 10mm;
+  background: #ffffff;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Inner Double Border matching official certificate */
+.sheet-frame {
+  width: 100%;
+  height: 100%;
+  border: 3px double var(--border-dark);
+  outline: 1px solid var(--border-dark);
+  outline-offset: -5px;
+  padding: 6mm 8mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* ==========================================================================
+   3. CERTIFICATE HEADER
+   ========================================================================== */
+.cert-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 4px;
+}
+
+.header-gov {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gov-text {
+  text-align: right;
+}
+
+.gov-line1 {
+  font-size: 13pt;
+  font-weight: 800;
+  color: #000;
+  line-height: 1.25;
+}
+
+.gov-line2 {
+  font-size: 10.5pt;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.25;
+}
+
+.gov-line3 {
+  font-size: 10.5pt;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.25;
+}
+
+.logo-dakahlia {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.header-title {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.header-title .title-box {
+  background: var(--bg-caption);
+  border: 1.5px solid var(--border-dark);
+  border-radius: 4px;
+  padding: 6px 28px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  white-space: nowrap;
+}
+
+.title-box h1 {
+  font-size: 18.5pt;
+  font-weight: 900;
+  color: #000;
+  letter-spacing: 0.5px;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.header-spatial {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.logo-spatial {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+/* ==========================================================================
+   4. CITIZEN SURVEY METADATA TABLE & NORTH ARROW
+   ========================================================================== */
+.cert-meta-section {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.meta-row-wrapper {
+  width: 100%;
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+/* North Direction Indicator: directly adjacent and above satellite images */
+.north-indicator-box {
+  flex: 0 0 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid var(--border-dark);
+  padding: 3px 6px;
+}
+
+.img-north-arrow {
+  width: 26px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.north-caption {
+  font-size: 8.5pt;
+  font-weight: 800;
+  color: #991b1b;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.table-meta-box {
+  flex: 1;
+}
+
+.table-meta {
+  width: 100%;
+  height: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  border: 1px solid var(--border-dark);
+}
+
+.table-meta th,
+.table-meta td {
+  border: 1px solid var(--border-dark);
+  text-align: center;
+  padding: 5px 6px;
+  font-size: 9.5pt;
+  line-height: 1.2;
+}
+
+.table-meta thead th {
+  background-color: var(--bg-table-header);
+  font-weight: 800;
+  color: #000;
+}
+
+.table-meta tbody td {
+  font-weight: 700;
+  color: #000;
+  background-color: #fff;
+}
+
+.td-bold {
+  font-weight: 800 !important;
+}
+
+.td-mono {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 10pt !important;
+  direction: ltr;
+}
+
+/* ==========================================================================
+   5. SATELLITE IMAGES GALLERY
+   ========================================================================== */
+.cert-gallery-section {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  padding: 2px 0;
+}
+
+/* Gallery Rules with Dynamic User Variables */
+:root {
+  --gallery-gap: 8px;
+  --gallery-card-height: auto;
+  --caption-font-size: 10pt;
+}
+
+.gallery-row {
+  width: 100%;
+  display: flex;
+  flex-direction: row; /* Right to left in RTL */
+  align-items: stretch;
+  justify-content: space-between;
+  gap: var(--gallery-gap, 8px) !important;
+  height: 100%;
+}
+
+.shot-card {
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid var(--border-dark);
+  border-radius: 2px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  min-height: 0;
+  transition: height 0.15s ease, font-size 0.15s ease;
+}
+
+.shot-img-box {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  overflow: hidden;
+}
+
+.shot-img-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.shot-caption-box {
+  background-color: var(--bg-caption);
+  border-top: 1.5px solid var(--border-dark);
+  padding: 5px 8px;
+  text-align: center;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shot-caption-text {
+  font-size: var(--caption-font-size, 10pt) !important;
+  font-weight: 800;
+  color: #000;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  line-height: 1.35;
+  word-break: break-word;
+  width: 100%;
+  margin: 0;
+  outline: none;
+}
+
+.shot-caption-text[contenteditable="true"]:hover {
+  background: rgba(56, 189, 248, 0.15);
+  cursor: text;
+  border-radius: 2px;
+}
+
+/* 2x2 Grid for 4 images (2 on top, 2 on bottom) */
+.gallery-grid-4 {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: var(--gallery-gap, 8px) !important;
+}
+
+.gallery-grid-4 .shot-card {
+  height: var(--gallery-card-height, 100%);
+  min-height: 100px;
+  max-height: 175px;
+}
+
+/* 2x3 Grid for 6 images (3 columns x 2 rows) */
+.gallery-grid-6 {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: var(--gallery-gap, 6px) !important;
+}
+
+.gallery-grid-6 .shot-card {
+  height: var(--gallery-card-height, 100%);
+  min-height: 95px;
+  max-height: 155px;
+}
+
+/* 5 Images on 2 Rows (3 on top, 2 on bottom) */
+.gallery-grid-5-2rows {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gallery-gap, 8px) !important;
+}
+
+.gallery-grid-5-2rows .grid-row-top {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gallery-gap, 8px) !important;
+  flex: 1;
+}
+
+.gallery-grid-5-2rows .grid-row-bottom {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--gallery-gap, 8px) !important;
+  width: 70%;
+  margin: 0 auto;
+  flex: 1;
+}
+
+/* Dynamic Widths and Heights for Horizontal Row */
+.count-2 .shot-card { width: 49.3%; height: var(--gallery-card-height, 235px); }
+.count-3 .shot-card { width: 32.5%; height: var(--gallery-card-height, 215px); }
+.count-4 .shot-card { width: 23.8%; height: var(--gallery-card-height, 195px); }
+.count-5 .shot-card { width: 19.3%; height: var(--gallery-card-height, 185px); }
+.count-6 .shot-card { width: 15.8%; height: var(--gallery-card-height, 165px); }
+
+/* ==========================================================================
+   6. OFFICIAL LEGAL DISCLAIMER BOX
+   ========================================================================== */
+.cert-disclaimer-section {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.disclaimer-box {
+  background-color: var(--bg-disclaimer);
+  border: 1px solid var(--border-dark);
+  border-radius: 3px;
+  padding: 6px 14px;
+  text-align: right;
+}
+
+.disclaimer-item {
+  font-size: 8.5pt;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.45;
+  text-align: right;
+  direction: rtl;
+}
+
+.disclaimer-alert {
+  font-weight: 800;
+  color: #000;
+}
+
+/* ==========================================================================
+   7. SIGNATORY BLOCK
+   ========================================================================== */
+.cert-footer {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.sig-col {
+  text-align: center;
+}
+
+.sig-title {
+  font-size: 10pt;
+  font-weight: 800;
+  color: #000;
+}
+
+.sig-accent {
+  font-size: 10.5pt;
+  font-weight: 900;
+}
+
+.sig-subtitle {
+  font-size: 9.5pt;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.sig-space {
+  height: 10px;
+}
+
+.sig-name {
+  font-size: 10pt;
+  font-weight: 800;
+  color: #000;
+}
+
+.sig-rank {
+  font-size: 9pt;
+  font-weight: 700;
+  color: #334155;
+}
+
+/* ==========================================================================
+   8. PRINT RULES (@media print) & ROTATION SUPPORT
+   ========================================================================== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  html, body.preview-body {
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .preview-stage {
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+
+  .a4-sheet {
+    box-shadow: none !important;
+    margin: 0 !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .a4-sheet.landscape {
+    width: 297mm !important;
+    height: 210mm !important;
+    max-height: 210mm !important;
+    padding: 6mm 8mm !important;
+  }
+
+  .a4-sheet.portrait {
+    width: 210mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    padding: 6mm 8mm !important;
+  }
+
+  .sheet-frame {
+    height: 100% !important;
+  }
+
+  /* 90-Degree Rotation for Edge-to-Edge Portrait Printing */
+  body.mode-rotate-90 {
+    width: 210mm !important;
+    height: 297mm !important;
+    overflow: hidden !important;
+  }
+
+  body.mode-rotate-90 .preview-stage {
+    width: 210mm !important;
+    height: 297mm !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    position: relative !important;
+  }
+
+  body.mode-rotate-90 .a4-sheet.landscape {
+    width: 297mm !important;
+    height: 210mm !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    transform-origin: top left !important;
+    transform: rotate(90deg) translateY(-210mm) !important;
+    margin: 0 !important;
+  }
+}
+
+/* Screen Mode for 90-Degree Rotation */
+body.mode-rotate-90 .preview-stage {
+  min-height: 320mm;
+  padding: 50px 20px 80px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+body.mode-rotate-90 .a4-sheet.landscape {
+  transform-origin: center center;
+  transform: rotate(90deg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+
+/* Default Page Orientation for Chrome Print (Standard Landscape) */
+@page {
+  size: A4 landscape;
+  margin: 0;
+}

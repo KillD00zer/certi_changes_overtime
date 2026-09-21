@@ -21,6 +21,8 @@
   let selectedYear = new Date().getFullYear();
   let root = null;
   let lastCameraKey = '';
+  let isPolygonVisible = true;
+  let overlayMode = 'polygon'; // 'polygon' | 'point'
 
   function ensureRoot() {
     let r = document.getElementById('earth-survey-hud-root');
@@ -40,21 +42,24 @@
         height: 100vh !important;
         pointer-events: none !important;
         z-index: 9999999 !important;
-        display: block !important;
+        display: ${isPolygonVisible ? 'block' : 'none'} !important;
       `;
     }
     root = r;
     return r;
   }
 
-  // Load parcel from storage on startup
+  // Load parcel and overlay mode from storage on startup
   if (chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get(['currentParcel', 'selectedYear'], (res) => {
+    chrome.storage.local.get(['currentParcel', 'selectedYear', 'overlayMode'], (res) => {
       if (res.currentParcel) {
         currentParcel = res.currentParcel;
       }
       if (res.selectedYear) {
         selectedYear = res.selectedYear;
+      }
+      if (res.overlayMode) {
+        overlayMode = res.overlayMode;
       }
       renderOverlay();
     });
@@ -62,12 +67,20 @@
     // Listen for storage changes
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area === 'local') {
+        let needRerender = false;
         if (changes.currentParcel) {
           currentParcel = changes.currentParcel.newValue;
-          renderOverlay();
+          needRerender = true;
         }
         if (changes.selectedYear) {
           selectedYear = changes.selectedYear.newValue;
+        }
+        if (changes.overlayMode) {
+          overlayMode = changes.overlayMode.newValue || 'polygon';
+          needRerender = true;
+        }
+        if (needRerender) {
+          renderOverlay();
         }
       }
     });
@@ -99,6 +112,7 @@
         'earth-navigation',
         'earth-toolbar',
         'earth-search',
+        'earth-drawer',
         '.widget-scene-canvas-overlay',
         '[role="toolbar"]',
         '[role="navigation"]',
@@ -106,7 +120,9 @@
         '[class*="timeline"]',
         '[class*="navigation"]',
         '[class*="minimap"]',
-        '[class*="status"]'
+        '[class*="status"]',
+        '[class*="drawer"]',
+        '[class*="sidebar"]'
       ];
 
       selectors.forEach(sel => {
@@ -207,7 +223,7 @@
       width: 100%;
       height: 100%;
       pointer-events: none;
-      display: block !important;
+      display: ${isPolygonVisible ? 'block' : 'none'} !important;
     `;
 
     // Camera parameter resolution
@@ -248,49 +264,155 @@
     `;
     svg.appendChild(defs);
 
-    // Polygon element: vibrant red outline, transparent inside for 100% clear satellite view
-    const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-    polygon.setAttribute('points', ptsStr);
-    polygon.setAttribute('fill', 'none');
-    polygon.setAttribute('stroke', '#ef4444');
-    polygon.setAttribute('stroke-width', '3.5');
-    polygon.setAttribute('stroke-linejoin', 'round');
-    polygon.setAttribute('filter', 'url(#hud-glow)');
-    svg.appendChild(polygon);
+    if (overlayMode === 'point') {
+      // MODE 2: Center Point with subtle applicant name badge
+      let distinct = points;
+      if (points.length > 3) {
+        const first = points[0];
+        const last = points[points.length - 1];
+        if (Math.abs(first.x - last.x) < 0.5 && Math.abs(first.y - last.y) < 0.5) {
+          distinct = points.slice(0, points.length - 1);
+        }
+      }
 
-    // Vertex Markers & Numbers (1, 2, 3, 4)
-    points.forEach((p) => {
-      // Circle on vertex
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', p.x);
-      circle.setAttribute('cy', p.y);
-      circle.setAttribute('r', '7');
-      circle.setAttribute('fill', '#22c55e');
-      circle.setAttribute('stroke', '#ffffff');
-      circle.setAttribute('stroke-width', '2');
-      svg.appendChild(circle);
+      let sumX = 0, sumY = 0;
+      distinct.forEach(p => { sumX += p.x; sumY += p.y; });
+      const ptX = sumX / distinct.length;
+      const ptY = sumY / distinct.length;
 
-      // Number badge background
-      const textBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      textBg.setAttribute('cx', p.x + 14);
-      textBg.setAttribute('cy', p.y - 12);
-      textBg.setAttribute('r', '9');
-      textBg.setAttribute('fill', '#0f172a');
-      textBg.setAttribute('stroke', '#38bdf8');
-      textBg.setAttribute('stroke-width', '1.5');
-      svg.appendChild(textBg);
+      const centerGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      centerGroup.setAttribute('class', 'earth-center-point-marker');
 
-      // Text label
+      // 1. Outer target ring
+      const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      ring.setAttribute('cx', ptX);
+      ring.setAttribute('cy', ptY);
+      ring.setAttribute('r', '10');
+      ring.setAttribute('fill', 'rgba(239, 68, 68, 0.2)');
+      ring.setAttribute('stroke', '#ef4444');
+      ring.setAttribute('stroke-width', '2');
+      ring.setAttribute('filter', 'url(#hud-glow)');
+      centerGroup.appendChild(ring);
+
+      // 2. Inner target center bullseye
+      const centerDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      centerDot.setAttribute('cx', ptX);
+      centerDot.setAttribute('cy', ptY);
+      centerDot.setAttribute('r', '3.5');
+      centerDot.setAttribute('fill', '#ffffff');
+      centerDot.setAttribute('stroke', '#ef4444');
+      centerDot.setAttribute('stroke-width', '1.5');
+      centerGroup.appendChild(centerDot);
+
+      // 3. Subtle Crosshair ticks
+      [
+        { x1: ptX - 16, y1: ptY, x2: ptX - 11, y2: ptY },
+        { x1: ptX + 11, y1: ptY, x2: ptX + 16, y2: ptY },
+        { x1: ptX, y1: ptY - 16, x2: ptX, y2: ptY - 11 },
+        { x1: ptX, y1: ptY + 11, x2: ptX, y2: ptY + 16 }
+      ].forEach(coord => {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', coord.x1);
+        line.setAttribute('y1', coord.y1);
+        line.setAttribute('x2', coord.x2);
+        line.setAttribute('y2', coord.y2);
+        line.setAttribute('stroke', '#ffffff');
+        line.setAttribute('stroke-width', '1.5');
+        line.setAttribute('stroke-linecap', 'round');
+        centerGroup.appendChild(line);
+      });
+
+      // 4. Subtle Applicant Name Label below marker
+      const applicantName = (currentParcel.applicantName || currentParcel.name || 'موقع المعاملة').trim();
+      const badgePadding = 12;
+      const approxCharWidth = 7.5;
+      const badgeWidth = Math.max(70, applicantName.length * approxCharWidth + badgePadding * 2);
+      const badgeHeight = 22;
+      const badgeY = ptY + 16;
+
+      // Small dotted connecting notch
+      const notch = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      notch.setAttribute('x1', ptX);
+      notch.setAttribute('y1', ptY + 10);
+      notch.setAttribute('x2', ptX);
+      notch.setAttribute('y2', badgeY);
+      notch.setAttribute('stroke', 'rgba(255, 255, 255, 0.6)');
+      notch.setAttribute('stroke-width', '1');
+      notch.setAttribute('stroke-dasharray', '2,2');
+      centerGroup.appendChild(notch);
+
+      // Translucent pill background (allows satellite imagery to remain visible underneath)
+      const badgeBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      badgeBg.setAttribute('x', ptX - badgeWidth / 2);
+      badgeBg.setAttribute('y', badgeY);
+      badgeBg.setAttribute('width', badgeWidth);
+      badgeBg.setAttribute('height', badgeHeight);
+      badgeBg.setAttribute('rx', '4');
+      badgeBg.setAttribute('ry', '4');
+      badgeBg.setAttribute('fill', 'rgba(15, 23, 42, 0.65)');
+      badgeBg.setAttribute('stroke', 'rgba(255, 255, 255, 0.35)');
+      badgeBg.setAttribute('stroke-width', '0.8');
+      centerGroup.appendChild(badgeBg);
+
+      // Name Text
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', p.x + 14);
-      text.setAttribute('y', p.y - 8);
+      text.setAttribute('x', ptX);
+      text.setAttribute('y', badgeY + 15);
       text.setAttribute('text-anchor', 'middle');
       text.setAttribute('fill', '#ffffff');
-      text.setAttribute('font-size', '10');
-      text.setAttribute('font-weight', 'bold');
-      text.textContent = p.id;
-      svg.appendChild(text);
-    });
+      text.setAttribute('font-size', '12');
+      text.setAttribute('font-family', "'Cairo', 'Segoe UI', Tahoma, sans-serif");
+      text.setAttribute('font-weight', '600');
+      text.setAttribute('letter-spacing', '0.2');
+      text.textContent = applicantName;
+      centerGroup.appendChild(text);
+
+      svg.appendChild(centerGroup);
+    } else {
+      // MODE 1: Full Red Polygon outline + numbered vertex circles
+      const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+      polygon.setAttribute('points', ptsStr);
+      polygon.setAttribute('fill', 'none');
+      polygon.setAttribute('stroke', '#ef4444');
+      polygon.setAttribute('stroke-width', '3.5');
+      polygon.setAttribute('stroke-linejoin', 'round');
+      polygon.setAttribute('filter', 'url(#hud-glow)');
+      svg.appendChild(polygon);
+
+      // Vertex Markers & Numbers (1, 2, 3, 4)
+      points.forEach((p) => {
+        // Circle on vertex
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', p.x);
+        circle.setAttribute('cy', p.y);
+        circle.setAttribute('r', '7');
+        circle.setAttribute('fill', '#22c55e');
+        circle.setAttribute('stroke', '#ffffff');
+        circle.setAttribute('stroke-width', '2');
+        svg.appendChild(circle);
+
+        // Number badge background
+        const textBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        textBg.setAttribute('cx', p.x + 14);
+        textBg.setAttribute('cy', p.y - 12);
+        textBg.setAttribute('r', '9');
+        textBg.setAttribute('fill', '#0f172a');
+        textBg.setAttribute('stroke', '#38bdf8');
+        textBg.setAttribute('stroke-width', '1.5');
+        svg.appendChild(textBg);
+
+        // Text label
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', p.x + 14);
+        text.setAttribute('y', p.y - 8);
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('fill', '#ffffff');
+        text.setAttribute('font-size', '10');
+        text.setAttribute('font-weight', 'bold');
+        text.textContent = p.id;
+        svg.appendChild(text);
+      });
+    }
 
     root.appendChild(svg);
   }
@@ -300,21 +422,34 @@
   // Runtime message listener
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.action === 'GET_MAP_BOUNDS') {
-      // IMPORTANT: Keep root visible so SVG polygon appears inside the screenshot!
+      // Keep root visible so SVG overlay appears inside the screenshot if not hidden
       ensureRoot();
-      if (root) root.style.display = 'block';
+      if (root && isPolygonVisible) {
+        root.style.setProperty('display', 'block', 'important');
+      }
 
-      // Temporarily hide Google Earth UI toolbars for 650ms during capture
+      // Temporarily hide Google Earth UI toolbars for 1600ms during capture
       const restoreUi = hideUiForCapture();
-      setTimeout(restoreUi, 650);
+      setTimeout(restoreUi, 1600);
 
       const bounds = getMapBounds();
       sendResponse(bounds);
       return true;
     }
 
-    if (msg.action === 'UPDATE_PARCEL') {
+    if (msg.action === 'SET_OVERLAY_MODE') {
+      overlayMode = (msg.mode === 'point') ? 'point' : 'polygon';
+      renderOverlay();
+      sendResponse({ success: true, mode: overlayMode });
+      return true;
+    }
+
+    if (msg.action === 'LOAD_PARCEL' || msg.action === 'UPDATE_PARCEL') {
       currentParcel = msg.parcel;
+      if (msg.overlayMode) {
+        overlayMode = msg.overlayMode;
+      }
+      isPolygonVisible = true;
       renderOverlay();
       sendResponse({ success: true });
       return true;
@@ -344,17 +479,23 @@
       return true;
     }
 
-    if (msg.action === 'TOGGLE_POLYGON') {
+    if (msg.action === 'TOGGLE_POLYGON' || msg.action === 'TOGGLE_POLY') {
       ensureRoot();
+      isPolygonVisible = (typeof msg.visible === 'boolean') ? msg.visible : !isPolygonVisible;
+
       const svg = document.getElementById('earth-parcel-svg');
       if (svg) {
-        const isHidden = (svg.style.display === 'none');
-        svg.style.display = isHidden ? 'block' : 'none';
-        sendResponse({ success: true, visible: isHidden });
-      } else {
+        svg.style.setProperty('display', isPolygonVisible ? 'block' : 'none', 'important');
+      } else if (isPolygonVisible) {
         renderOverlay();
-        sendResponse({ success: true, visible: true });
       }
+
+      if (root) {
+        root.style.setProperty('display', isPolygonVisible ? 'block' : 'none', 'important');
+      }
+
+      showToast(isPolygonVisible ? '👁️ تم إظهار الرسم على الخريطة' : '🙈 تم إخفاء الرسم من الخريطة');
+      sendResponse({ success: true, visible: isPolygonVisible });
       return true;
     }
 
@@ -382,31 +523,38 @@
 
   function processAndSaveCapture(rawUrl, bounds, callback) {
     cropImage(rawUrl, bounds, (croppedUrl) => {
-      chrome.storage.local.get(['capturedShots', 'selectedYear'], (store) => {
+      chrome.storage.local.get(['capturedShots', 'selectedYear', 'selectedMonth'], (store) => {
         const shots = store.capturedShots || [];
         const yr = store.selectedYear || selectedYear || new Date().getFullYear();
-        const dateStr = new Date().toISOString().split('T')[0];
+        const mo = store.selectedMonth || '';
+        const dateStr = mo ? `${yr}/${mo}` : `${yr}`;
 
         const newShot = {
           id: Date.now(),
           year: yr,
+          month: mo,
           captureDate: dateStr,
           imageData: croppedUrl,
           status: 'أرض فضاء / لم يطرأ تغيير إنشائي',
           notes: 'تم الالتقاط وتوثيق الحدود والمضلع بدقة عالية عبر Google Earth Web'
         };
 
-        const existingIdx = shots.findIndex(s => String(s.year) === String(yr));
+        const existingIdx = shots.findIndex(s => String(s.year) === String(yr) && String(s.month || '') === String(mo || ''));
         if (existingIdx >= 0) {
           shots[existingIdx] = newShot;
         } else {
           shots.push(newShot);
         }
 
-        shots.sort((a, b) => parseInt(a.year) - parseInt(b.year));
+        shots.sort((a, b) => {
+          const yA = parseInt(a.year) || 0;
+          const yB = parseInt(b.year) || 0;
+          if (yA !== yB) return yA - yB;
+          return (parseInt(a.month) || 0) - (parseInt(b.month) || 0);
+        });
 
         chrome.storage.local.set({ capturedShots: shots }, () => {
-          showToast(`✅ تم حفظ لقطة خريطة سنة ${yr} وتوثيق المضلع بالمعرض بنجاح!`);
+          showToast(`✅ تم حفظ لقطة خريطة ${dateStr} وتوثيق المضلع بالمعرض بنجاح!`);
           if (callback) callback({ success: true });
         });
       });

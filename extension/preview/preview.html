@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>معاينة وطباعة بيان التسلسل الزمني - وحدة المتغيرات المكانية</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="preview.css">
+  
+  <!-- Libraries for CSV & DOCX fallback -->
+  <script src="../libs/docx.umd.js"></script>
+  <script src="../libs/FileSaver.min.js"></script>
+  <script src="../scripts/template_assets.js"></script>
+  <script src="../scripts/geo_engine.js"></script>
+  <script src="../scripts/docx_builder.js"></script>
+</head>
+<body class="preview-body">
+
+  <!-- Floating Screen Toolbar (Hidden during print) -->
+  <header class="preview-toolbar no-print">
+    <div class="toolbar-brand">
+      <img src="../icons/icon48.png" alt="Logo" class="toolbar-icon">
+      <div class="toolbar-title-box">
+        <h2>معاينة بيان التسلسل الزمني الرسمي</h2>
+        <p id="citizen-name-badge">المواطن: جاري التحميل...</p>
+      </div>
+    </div>
+
+    <div class="toolbar-actions">
+      <!-- Rotate 90 deg for full portrait print -->
+      <button id="btn-rotate-90" class="btn-tool btn-tool-accent" title="تدوير الورقة 90 درجة لملء الصفحة الطولية بالكامل A4">
+        <span id="rotate-icon">🔄</span>
+        <span id="rotate-label">تدوير 90° (للطباعة الطولية)</span>
+      </button>
+
+      <!-- Quick orientation toggle if needed -->
+      <div class="toggle-orient-box">
+        <button id="btn-toggle-orient" class="btn-tool" title="تبديل اتجاه القالب (عرضي / طولي)">
+          <span id="orient-icon">📐</span>
+          <span id="orient-label">قالب عرضي</span>
+        </button>
+      </div>
+
+      <!-- Download CSV -->
+      <button id="btn-download-csv" class="btn-tool btn-tool-secondary" title="تنزيل ملف الإحداثيات Polygon.csv">
+        <span>📥 تنزيل Polygon CSV</span>
+      </button>
+
+      <!-- Download DOCX (bonus) -->
+      <button id="btn-download-docx" class="btn-tool btn-tool-secondary" title="تحميل نسخة Word Docx">
+        <span>📄 تنزيل Word</span>
+      </button>
+
+      <!-- Primary Print / Save as PDF Button -->
+      <button id="btn-print-pdf" class="btn-tool btn-tool-primary" title="فتح نافذة الطباعة للحفظ كملف PDF رسمي">
+        <span>🖨️ طباعة / حفظ كـ PDF</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Print Instruction Banner (Screen only) -->
+  <div class="print-instruction-banner no-print">
+    <span>💡 <strong>نصيحة للطباعة:</strong> تم ضبط الصفحة افتراضياً لتطبع بالعرض <strong>Landscape</strong> بكامل الورقة. وإذا رغبت بالطباعة في وضع طولي <strong>Portrait</strong>، اضغط زر <strong>"🔄 تدوير 90°"</strong> بالأعلى لتدوير الشهادة وملء الصفحة الطولية 100% بدون أي تصغير أو فراغات!</span>
+  </div>
+
+  <!-- Interactive Dynamic Tuning Bar (Screen only, hidden during print) -->
+  <aside class="tuning-bar no-print" id="tuning-bar">
+    <div class="tuning-section">
+      <span class="tuning-title">📐 توزيع الصور:</span>
+      <div class="tuning-btn-group">
+        <button id="btn-layout-auto" class="btn-tune active" title="توزيع ذكي تلقائي حسب عدد الصور ومساحة الصفحة" type="button">⚡ تلقائي ذكي</button>
+        <button id="btn-layout-1row" class="btn-tune" title="فرض الصور في صف أفقي واحد" type="button">↔️ صف واحد</button>
+        <button id="btn-layout-2rows" class="btn-tune" title="توزيع الصور على صفين (2×2 أو 3×2)" type="button">⊞ صفين</button>
+      </div>
+    </div>
+
+    <div class="tuning-divider"></div>
+
+    <div class="tuning-section">
+      <span class="tuning-title">🎚️ ارتفاع الصور:</span>
+      <div class="tuning-slider-box">
+        <input type="range" id="slider-card-height" min="100" max="260" step="5" value="160">
+        <span id="label-card-height" class="tuning-val">160px</span>
+      </div>
+    </div>
+
+    <div class="tuning-divider"></div>
+
+    <div class="tuning-section">
+      <span class="tuning-title">🔤 حجم خط التعليق:</span>
+      <div class="tuning-btn-group">
+        <button id="btn-font-down" class="btn-tune" title="تصغير خط التوصيف" type="button">A-</button>
+        <span id="label-font-size" class="tuning-val">10pt</span>
+        <button id="btn-font-up" class="btn-tune" title="تكبير خط التوصيف" type="button">A+</button>
+      </div>
+    </div>
+
+    <div class="tuning-divider"></div>
+
+    <div class="tuning-section">
+      <span class="tuning-title">🔲 تباعد الصور:</span>
+      <div class="tuning-btn-group">
+        <button id="btn-gap-sm" class="btn-tune" title="تباعد ضيق (4px)" type="button">ضيق</button>
+        <button id="btn-gap-md" class="btn-tune active" title="تباعد متوسط (8px)" type="button">متوسط</button>
+        <button id="btn-gap-lg" class="btn-tune" title="تباعد واسع (12px)" type="button">واسع</button>
+      </div>
+    </div>
+
+    <div class="tuning-actions">
+      <button id="btn-reset-tuning" class="btn-tune-reset" title="إعادة الضبط للحسابات الجغرافية التلقائية" type="button">↺ ضبط تلقائي</button>
+    </div>
+  </aside>
+
+  <!-- Sheet Container for Printable A4 Page -->
+  <main class="preview-stage">
+    <div id="print-sheet" class="a4-sheet landscape">
+      <!-- Inner Double Border Frame -->
+      <div class="sheet-frame">
+
+        <!-- 1. Header (3 Columns: Right, Center, Left) -->
+        <header class="cert-header">
+          <!-- Right: Dakahlia Governorate Info & Logo -->
+          <div class="header-col header-gov">
+            <img id="img-dakahlia-logo" src="" alt="شعار محافظة الدقهلية" class="logo-dakahlia">
+            <div class="gov-text">
+              <p class="gov-line1">محافظة الدقهلية</p>
+              <p class="gov-line2">ديوان عام المحافظة</p>
+              <p class="gov-line3">وحدة المتغيرات المكانية</p>
+            </div>
+          </div>
+
+          <!-- Center: Title Box -->
+          <div class="header-col header-title">
+            <div class="title-box">
+              <h1>بيان تسلسل زمني</h1>
+            </div>
+          </div>
+
+          <!-- Left: Spatial Variables Logo -->
+          <div class="header-col header-spatial">
+            <img id="img-spatial-logo" src="" alt="شعار المتغيرات المكانية" class="logo-spatial">
+          </div>
+        </header>
+
+        <!-- 2. Citizen Survey Metadata Table & North Indicator (Directly above Satellite Images) -->
+        <section class="cert-meta-section">
+          <div class="meta-row-wrapper">
+            <!-- North Arrow: Positioned on the right, directly above the earliest satellite image -->
+            <div class="north-indicator-box" title="اتجاه الشمال الجغرافي للصور الفضائية">
+              <img id="img-north-arrow" src="" alt="اتجاه الشمال N" class="img-north-arrow">
+              <span class="north-caption">N</span>
+            </div>
+
+            <!-- Citizen Metadata Table -->
+            <div class="table-meta-box">
+              <table class="table-meta">
+                <thead>
+                  <tr>
+                    <th style="width: 28%;">اسم المواطن</th>
+                    <th style="width: 14%;">خط الطول</th>
+                    <th style="width: 14%;">خط العرض</th>
+                    <th style="width: 14%;">المركز</th>
+                    <th style="width: 15%;">الوحدة المحلية</th>
+                    <th style="width: 15%;">العنوان / الحوض</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td id="meta-name" class="td-bold" contenteditable="true" title="انقر لتعديل اسم المواطن مباشرة">—</td>
+                    <td id="meta-lng" class="td-bold td-mono" contenteditable="true" title="انقر لتعديل خط الطول">—</td>
+                    <td id="meta-lat" class="td-bold td-mono" contenteditable="true" title="انقر لتعديل خط العرض">—</td>
+                    <td id="meta-center" contenteditable="true" title="انقر لتعديل المركز">—</td>
+                    <td id="meta-village" contenteditable="true" title="انقر لتعديل الوحدة المحلية">—</td>
+                    <td id="meta-address" contenteditable="true" title="انقر لتعديل العنوان / الحوض">—</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Satellite Images Gallery -->
+        <section id="cert-gallery-section" class="cert-gallery-section">
+          <!-- Dynamically populated from preview.js -->
+        </section>
+
+        <!-- 4. Official Legal Disclaimer Box -->
+        <section class="cert-disclaimer-section">
+          <div class="disclaimer-box">
+            <p class="disclaimer-item">١- هذا البيان تم استخراجه بناء على الطلب المقدم من المواطن وطبقا للبيانات والمستندات التي تقدم بها وكذا طبقا لإرشاده للموقع.</p>
+            <p class="disclaimer-item disclaimer-alert">٢- يتحمل المواطن كافة المسئوليات القانونية والجنائية والمدنية كاملا عن أي بيانات او مستندات او ارشاد غير صحيح.</p>
+            <p class="disclaimer-item">٣- هذا البيان لا يعتد به كسند ملكية او فصل ملكية .</p>
+            <p class="disclaimer-item">٤- هذا البيان لا يحدد تاريخ بناء المبنى او تاريخ بناء أي دور في المبنى .</p>
+            <p class="disclaimer-item">٥- هذا البيان طبقا للقطات الصورة الفضائية المتاحة على برنامج Google Earth .</p>
+          </div>
+        </section>
+
+        <!-- 5. Signatory Block (3 Columns) -->
+        <footer class="cert-footer">
+          <div class="sig-col sig-right">
+            <p class="sig-title">مسئول المتغيرات المكانية</p>
+            <p class="sig-space">&nbsp;</p>
+            <p class="sig-name" id="sig-surveyor" contenteditable="true" title="انقر لتعديل الاسم">الاسم: ....................................</p>
+          </div>
+
+          <div class="sig-col sig-center">
+            <p class="sig-title">مدير وحدة المتغيرات المكانية</p>
+            <p class="sig-space">&nbsp;</p>
+            <p class="sig-name" id="sig-director" contenteditable="true" title="انقر لتعديل الاسم">مهندسة / مروة محمد رضوان</p>
+          </div>
+
+          <div class="sig-col sig-left">
+            <p class="sig-title sig-accent">يعتمد ،،</p>
+            <p class="sig-subtitle">السكرتير العام للمحافظة</p>
+            <p class="sig-name" id="sig-reviewer" contenteditable="true" title="انقر لتعديل الاسم">د / عماد عبدالله احمد</p>
+            <p class="sig-rank">وكيل أول الوزارة</p>
+          </div>
+        </footer>
+
+      </div> <!-- /sheet-frame -->
+    </div> <!-- /a4-sheet -->
+  </main>
+
+  <script src="preview.js"></script>
+</body>
+</html>

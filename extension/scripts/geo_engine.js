@@ -150,12 +150,36 @@
   /**
    * Parses Survey Rows into structured Parcel object
    */
-  function parseSurveyRows(rows) {
-    if (!rows || rows.length === 0) {
+  function parseSurveyRows(inputRows) {
+    if (!inputRows || inputRows.length === 0) {
       throw new Error('الملف فارغ أو لا يحتوي على صفوف بيانات.');
     }
 
-    const headers = Object.keys(rows[0]);
+    // Support two input formats:
+    // A) Array-of-arrays (from XLSX header:1 or built-in samples):
+    //    [ ['OBJECTID','POINT_X','POINT_Y',...], [1, 31.4, 31.06, ...], ... ]
+    // B) Array-of-objects (from XLSX default sheet_to_json):
+    //    [ { OBJECTID: 1, POINT_X: 31.4, POINT_Y: 31.06, ... }, ... ]
+    let rows;
+    let headers;
+
+    if (Array.isArray(inputRows[0])) {
+      // Format A: first row is headers, rest is data
+      const headerRow = inputRows[0].map(h => String(h).trim());
+      const dataRows = inputRows.slice(1);
+      rows = dataRows.map(row => {
+        const obj = {};
+        headerRow.forEach((h, i) => {
+          obj[h] = (i < row.length) ? row[i] : '';
+        });
+        return obj;
+      });
+      headers = headerRow;
+    } else {
+      // Format B: already objects
+      rows = inputRows;
+      headers = Object.keys(rows[0]);
+    }
 
     // Find column matching regex patterns
     function findColumn(patterns) {
@@ -182,11 +206,17 @@
       /^objectid$/, /^origfid$/, /^fid$/, /^pt$/, /^point$/, /^id$/, /^نقطة$/, /^م$/
     ]);
 
-    const colName = findColumn([/^اسممقدما?لطلب$/, /^اسممقدما?لطلب$/, /^الاسم$/, /^اسمالمواطن$/, /^المواطن$/]);
-    const colNatId = findColumn([/^الرقما?لقومي$/, /^رقمقومي$/, /^القومي$/]);
-    const colCenter = findColumn([/^المركز$/, /^مركز$/]);
-    const colVillage = findColumn([/^القرية$/, /^قرية$/, /^المدينة$/, /^مدينة$/, /^الحي$/]);
-    const colStatedArea = findColumn([/^المساحةم2$/, /^المساحة$/, /^المساحةبالمتر$/, /^shapearea$/]);
+    const colIdNo = findColumn([/^idno$/, /^رقما?لطلب$/, /^رقما?لمعاملة$/, /^id$/]);
+    const colName = findColumn([/^اسممقدما?لطلب$/, /^اسمالمواطن$/, /^المواطن$/, /^name$/, /^الاسم$/]);
+    const colNatId = findColumn([/^anational$/, /^الرقما?لقومي$/, /^رقمقومي$/, /^القومي$/]);
+    const colCenter = findColumn([/^center$/, /^المركز$/, /^مركز$/]);
+    const colSheikhah = findColumn([/^sheikhah$/, /^الوحدةا?لمحلية$/, /^الشياخة$/, /^شياخة$/]);
+    const colPlace = findColumn([/^place$/, /^العنوان$/, /^المكان$/, /^القرية$/, /^قرية$/, /^المدينة$/, /^مدينة$/, /^الحي$/, /^حوض$/]);
+    const colActivity = findColumn([/^activity$/, /^النشاط$/, /^نوعالنشاط$/]);
+    const colStatus = findColumn([/^status$/, /^الحالة$/, /^حالةالمعاينة$/]);
+    const colGov = findColumn([/^governate$/, /^المحافظة$/]);
+    const colStatedArea = findColumn([/^shapearea$/, /^area$/, /^المساحةم2$/, /^المساحة$/, /^المساحةبالمتر$/]);
+    const colStatedLen = findColumn([/^shapelength$/, /^المحيط$/]);
     const colDesc = findColumn([/^وصفالموقع$/, /^الوصف$/, /^وصفالتعامل$/]);
 
     if (!colX || !colY) {
@@ -197,8 +227,13 @@
     const rawVertices = [];
     let applicantName = '';
     let nationalId = '';
+    let idNo = '';
     let centerCity = '';
-    let village = '';
+    let sheikhah = '';
+    let place = '';
+    let activity = 'سكني';
+    let status = 'بعد المعاينة';
+    let governate = 'الدقهلية';
     let statedArea = null;
     let locationDesc = '';
 
@@ -218,8 +253,13 @@
         // Capture metadata from first available row
         if (!applicantName && colName && row[colName]) applicantName = String(row[colName]).trim();
         if (!nationalId && colNatId && row[colNatId]) nationalId = normalizeDigits(row[colNatId]);
+        if (!idNo && colIdNo && row[colIdNo]) idNo = normalizeDigits(row[colIdNo]);
         if (!centerCity && colCenter && row[colCenter]) centerCity = String(row[colCenter]).trim();
-        if (!village && colVillage && row[colVillage]) village = String(row[colVillage]).trim();
+        if (!sheikhah && colSheikhah && row[colSheikhah]) sheikhah = String(row[colSheikhah]).trim();
+        if (!place && colPlace && row[colPlace]) place = String(row[colPlace]).trim();
+        if (colActivity && row[colActivity]) activity = String(row[colActivity]).trim();
+        if (colStatus && row[colStatus]) status = String(row[colStatus]).trim();
+        if (colGov && row[colGov]) governate = String(row[colGov]).trim();
         if (statedArea === null && colStatedArea && row[colStatedArea]) statedArea = parseNumber(row[colStatedArea]);
         if (!locationDesc && colDesc && row[colDesc]) locationDesc = String(row[colDesc]).trim();
       }
@@ -250,6 +290,7 @@
     // Attach WGS coordinates to vertices
     finalVertices.forEach((v, i) => {
       v.lon = finalWgs[i][0];
+      v.lng = finalWgs[i][0];
       v.lat = finalWgs[i][1];
       v.index = i + 1;
     });
@@ -281,9 +322,19 @@
     return {
       applicantName: applicantName || 'غير محدد',
       nationalId: nationalId || '',
+      idNo: idNo || '62644774',
       centerCity: centerCity || 'المنصورة',
-      village: village || '',
-      locationDesc: locationDesc || '',
+      sheikhah: sheikhah || place || '',
+      village: sheikhah || place || '',
+      place: place || (sheikhah ? `${sheikhah} ــ ${centerCity}` : ''),
+      basin: locationDesc || place || '',
+      address: locationDesc || place || '',
+      placeName: place || sheikhah || '',
+      markaz: centerCity || 'المنصورة',
+      activity: activity || 'سكني',
+      status: status || 'بعد المعاينة',
+      governate: governate || 'الدقهلية',
+      locationDesc: locationDesc || place || 'معاينة رصد تغيرات مكانية وتصالح',
       statedAreaM2: statedArea || areaM2,
       calculatedAreaM2: areaM2,
       perimeterM: perimeterM,
@@ -291,6 +342,8 @@
       vertices: finalVertices,
       bounds: { minLon, maxLon, minLat, maxLat },
       center: { lon: centerLon, lat: centerLat },
+      centerLng: centerLon,
+      centerLat: centerLat,
       diagonalMeters: diagonalMeters,
       optimalDistance: optimalDistance,
       earthUrl: earthUrl
@@ -346,13 +399,153 @@
 </kml>`;
   }
 
+  /**
+   * Generates CSV string matching Polygon_1.csv format exactly
+   */
+  function generatePolygonCsvContent(parcel, vertices) {
+    const vList = vertices || (parcel && parcel.vertices) || [];
+    if (vList.length < 3) return '';
+
+    const idNo = (parcel && parcel.idNo) || '62644774';
+    const name = (parcel && parcel.applicantName) || 'مواطن';
+    const activity = (parcel && parcel.activity) || 'سكني';
+    const gov = (parcel && parcel.governate) || 'الدقهلية';
+    const unit = 'م2';
+    const area = ((parcel && parcel.calculatedAreaM2) || 0).toFixed(2);
+    const status = (parcel && parcel.status) || 'بعد المعاينة';
+    const pointCount = vList.length;
+    const anational = (parcel && parcel.nationalId) || '';
+    const commission = 'محافظة الدقهلية';
+    const sheikhah = (parcel && (parcel.sheikhah || parcel.village)) || '';
+    const center = (parcel && parcel.centerCity) || '';
+    const place = (parcel && parcel.place) || (sheikhah ? `${sheikhah} ــ ${center}` : center);
+    const length = ((parcel && parcel.perimeterM) || 0).toFixed(2);
+    const origFid = 1;
+
+    let csv = '\uFEFFOBJECTID,id_no,name,activity,governate,unit,area,status,point,Anational,Commission,Sheikhah,Center,place,SHAPE_Length,SHAPE_Area,ORIG_FID,POINT_X,POINT_Y\r\n';
+
+    // Output all points (1 to N)
+    vList.forEach((v, idx) => {
+      const objId = idx + 1;
+      const x = (v.rawX !== undefined ? v.rawX : v.lon);
+      const y = (v.rawY !== undefined ? v.rawY : v.lat);
+      csv += `${objId},${idNo},${name},${activity},${gov},${unit},${area},${status},${pointCount},${anational},${commission},${sheikhah},${center},${place},${length},${area},${origFid},${x},${y}\r\n`;
+    });
+
+    // Ring closure point (N+1 = Point 1)
+    const firstV = vList[0];
+    const closingObjId = vList.length + 1;
+    const firstX = (firstV.rawX !== undefined ? firstV.rawX : firstV.lon);
+    const firstY = (firstV.rawY !== undefined ? firstV.rawY : firstV.lat);
+    csv += `${closingObjId},${idNo},${name},${activity},${gov},${unit},${area},${status},${pointCount},${anational},${commission},${sheikhah},${center},${place},${length},${area},${origFid},${firstX},${firstY}\r\n`;
+
+    return csv;
+  }
+
+  /**
+   * Constructs parcel object directly from manual data entry
+   */
+  function createParcelFromManual(meta, pointsRaw) {
+    if (!pointsRaw || pointsRaw.length < 3) {
+      throw new Error('يجب إدخال 3 أركان مساحية على الأقل لتمثيل مضلع الأرض.');
+    }
+
+    const rawCoords = pointsRaw.map((p, idx) => {
+      const px = parseNumber(p.x !== undefined ? p.x : p.lon);
+      const py = parseNumber(p.y !== undefined ? p.y : p.lat);
+      if (px === null || py === null) {
+        throw new Error(`الإحداثي في النقطة رقم ${idx + 1} غير صالح.`);
+      }
+      return [px, py];
+    });
+
+    const rawVertices = rawCoords.map(([x, y], idx) => ({
+      id: idx + 1,
+      rawX: x,
+      rawY: y
+    }));
+
+    // Detect CRS & Transform
+    const { coords: wgsCoords, crs } = detectCrsAndTransform(rawCoords);
+
+    let finalWgs = [...wgsCoords];
+    let finalVertices = [...rawVertices];
+
+    // Closed Ring Deduplication
+    if (finalWgs.length > 3) {
+      const first = finalWgs[0];
+      const last = finalWgs[finalWgs.length - 1];
+      const distClosing = haversineMeters(first[0], first[1], last[0], last[1]);
+      if (distClosing < 0.2) {
+        finalWgs.pop();
+        finalVertices.pop();
+      }
+    }
+
+    finalVertices.forEach((v, i) => {
+      v.lon = finalWgs[i][0];
+      v.lng = finalWgs[i][0];
+      v.lat = finalWgs[i][1];
+      v.index = i + 1;
+    });
+
+    const { areaM2, perimeterM } = calculatePolygonMetrics(finalWgs);
+
+    let minLon = 180, maxLon = -180, minLat = 90, maxLat = -90;
+    finalWgs.forEach(([lon, lat]) => {
+      if (lon < minLon) minLon = lon;
+      if (lon > maxLon) maxLon = lon;
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+    });
+
+    const centerLon = (minLon + maxLon) / 2.0;
+    const centerLat = (minLat + maxLat) / 2.0;
+    const diagonalMeters = haversineMeters(minLon, minLat, maxLon, maxLat);
+    const optimalDistance = Math.round(Math.max(diagonalMeters * 2.8, 120));
+    const earthUrl = `https://earth.google.com/web/@${centerLat.toFixed(7)},${centerLon.toFixed(7)},12a,${optimalDistance}d,35y,0h,0t,0r`;
+
+    const centerCity = meta.center ? String(meta.center).trim() : 'المنصورة';
+    const sheikhah = meta.sheikhah ? String(meta.sheikhah).trim() : '';
+    const place = meta.place ? String(meta.place).trim() : (sheikhah ? `${sheikhah} ــ ${centerCity}` : centerCity);
+
+    return {
+      applicantName: meta.name ? String(meta.name).trim() : 'غير محدد',
+      nationalId: meta.nationalId ? normalizeDigits(meta.nationalId) : '',
+      idNo: meta.idNo ? normalizeDigits(meta.idNo) : '62644774',
+      centerCity: centerCity,
+      sheikhah: sheikhah,
+      village: sheikhah,
+      place: place,
+      activity: meta.activity || 'سكني',
+      status: meta.status || 'بعد المعاينة',
+      governate: meta.governate || 'الدقهلية',
+      locationDesc: meta.locationDesc || place || 'معاينة رصد تغيرات مكانية وتصالح',
+      statedAreaM2: areaM2,
+      calculatedAreaM2: areaM2,
+      perimeterM: perimeterM,
+      crs: crs,
+      vertices: finalVertices,
+      bounds: { minLon, maxLon, minLat, maxLat },
+      center: { lon: centerLon, lat: centerLat },
+      centerLng: centerLon,
+      centerLat: centerLat,
+      diagonalMeters: diagonalMeters,
+      optimalDistance: optimalDistance,
+      earthUrl: earthUrl
+    };
+  }
+
   // Export module to global scope
   global.GeoEngine = {
     detectCrsAndTransform,
     haversineMeters,
     calculatePolygonMetrics,
     parseSurveyRows,
+    generatePolygonCsvContent,
+    createParcelFromManual,
     generateKml
   };
 
 })(typeof window !== 'undefined' ? window : this);
+

@@ -127,14 +127,15 @@ chrome.commands.onCommand.addListener((command) => {
 
 // Runtime Message Listener
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'CAPTURE_VISIBLE_TAB') {
+  if (message.action === 'CAPTURE_TAB' || message.action === 'CAPTURE_VISIBLE_TAB') {
     let winId = message.windowId || null;
 
     const performCapture = (targetWinId) => {
       chrome.tabs.captureVisibleTab(targetWinId, { format: 'png' }, (dataUrl) => {
-        if (chrome.runtime.lastError) {
-          console.error('Error capturing visible tab:', chrome.runtime.lastError);
-          sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        if (chrome.runtime.lastError || !dataUrl) {
+          const err = chrome.runtime.lastError ? chrome.runtime.lastError.message : 'فشل التقاط الشاشة';
+          console.error('[EarthSurvey] captureVisibleTab error:', err);
+          sendResponse({ success: false, error: err });
         } else {
           sendResponse({ success: true, dataUrl: dataUrl });
         }
