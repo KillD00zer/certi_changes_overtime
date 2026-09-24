@@ -31,10 +31,13 @@
       </div>
     </div>
     <div class="header-actions">
+      <button id="btn-check-update" class="btn-update-header" title="فحص التحديثات من GitHub وإعادة تحميل الإضافة">
+        <span>🔄 التحديثات</span>
+      </button>
       <button id="btn-reset-all" class="btn-reset-header" title="مسح كافة البيانات وتفريغ النموذج لمعاملة جديدة">
         <span>🗑️ تفريغ (Reset)</span>
       </button>
-      <span class="version-badge">v2.0</span>
+      <span class="version-badge" id="app-version-badge">v3.0</span>
     </div>
   </header>
 
@@ -576,6 +579,58 @@
     </section>
 
   </main>
+
+  <!-- Modal: System Update & Reset Dialog -->
+  <div id="modal-update-dialog" class="update-modal-backdrop" style="display: none;">
+    <div class="update-modal-box">
+      <div class="update-modal-header">
+        <div class="update-modal-title">
+          <span>🔄 فحص التحديثات وإعادة تشغيل الإضافة</span>
+        </div>
+        <button type="button" id="btn-close-update-modal" class="btn-close-modal" title="إغلاق">✕</button>
+      </div>
+      <div class="update-modal-body">
+        <div class="update-version-row">
+          <div class="version-item">
+            <span class="version-label">الإصدار الحالي مثبت:</span>
+            <span class="version-val current-val" id="lbl-curr-version">v3.0</span>
+          </div>
+          <div class="version-item">
+            <span class="version-label">أحدث إصدار على GitHub:</span>
+            <span class="version-val remote-val" id="lbl-remote-version">جاري الفحص...</span>
+          </div>
+        </div>
+
+        <div id="update-status-msg" class="update-status-alert info">
+          <span>🔍 جاري الاتصال بمستودع GitHub للتحقق من وجود تحديثات جديدة...</span>
+        </div>
+
+        <div class="update-actions-list">
+          <!-- Action 1: Instant Reload Extension -->
+          <div class="update-action-card">
+            <div class="action-info">
+              <strong>↻ إعادة تعيين وتحميل الإضافة (Reset & Reload)</strong>
+              <p>تفريغ ذاكرة الإضافة بالكامل وتحميل الكود المحدث فوراً دون الحاجة لإعادة فتح المتصفح.</p>
+            </div>
+            <button type="button" id="btn-reload-extension" class="btn btn-sm btn-primary">
+              ↻ ريلود للإضافة
+            </button>
+          </div>
+
+          <!-- Action 2: Run Update Script -->
+          <div class="update-action-card">
+            <div class="action-info">
+              <strong>⚡ تنزيل وتثبيت أحدث كود من GitHub</strong>
+              <p>شغّل ملف <code style="color:#38bdf8; font-weight: bold;">تحديث_المنظومة.bat</code> الموجود بمجلد البرنامج لاستبدال الملفات تلقائياً بآخر تحديث.</p>
+            </div>
+            <button type="button" id="btn-download-updater-bat" class="btn btn-sm btn-secondary" title="تنزيل سكربت التحديث المباشر">
+              📥 تنزيل ملف التحديث (.bat)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Notification Toast Container -->
   <div id="toast" class="toast"></div>

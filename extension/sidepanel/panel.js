@@ -2344,6 +2344,130 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // --- GITHUB AUTO-UPDATE & EXTENSION RELOAD MANAGER ---
+  const btnCheckUpdate = document.getElementById('btn-check-update');
+  const modalUpdateDialog = document.getElementById('modal-update-dialog');
+  const btnCloseUpdateModal = document.getElementById('btn-close-update-modal');
+  const lblCurrVersion = document.getElementById('lbl-curr-version');
+  const lblRemoteVersion = document.getElementById('lbl-remote-version');
+  const updateStatusMsg = document.getElementById('update-status-msg');
+  const btnReloadExtension = document.getElementById('btn-reload-extension');
+  const btnDownloadUpdaterBat = document.getElementById('btn-download-updater-bat');
+  const appVersionBadge = document.getElementById('app-version-badge');
+
+  const currentLocalVersion = (chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest().version : '3.0.0';
+  if (lblCurrVersion) lblCurrVersion.textContent = `v${currentLocalVersion}`;
+  if (appVersionBadge) appVersionBadge.textContent = `v${currentLocalVersion}`;
+
+  async function checkGithubUpdate(silent = false) {
+    if (!silent) {
+      if (lblRemoteVersion) lblRemoteVersion.textContent = 'جاري الفحص...';
+      if (updateStatusMsg) {
+        updateStatusMsg.className = 'update-status-alert info';
+        updateStatusMsg.innerHTML = '<span>🔍 جاري الاتصال بمستودع GitHub للتحقق من التحديثات...</span>';
+      }
+    }
+
+    try {
+      // 1. Check raw manifest.json with timestamp to avoid browser cache
+      const manifestUrl = `https://raw.githubusercontent.com/KillD00zer/certi_processing_tools/main/extension/manifest.json?t=${Date.now()}`;
+      const res = await fetch(manifestUrl, { cache: 'no-store' });
+      if (res.ok) {
+        const remoteData = await res.json();
+        const remoteVer = remoteData.version || currentLocalVersion;
+        if (lblRemoteVersion) lblRemoteVersion.textContent = `v${remoteVer}`;
+
+        if (remoteVer !== currentLocalVersion) {
+          if (btnCheckUpdate) {
+            btnCheckUpdate.classList.add('has-update');
+            btnCheckUpdate.title = `🚀 يتوفر تحديث جديد (v${remoteVer})! انقر هنا`;
+          }
+          if (updateStatusMsg) {
+            updateStatusMsg.className = 'update-status-alert warning';
+            updateStatusMsg.innerHTML = `<span>🚀 <strong>يوجد إصدار جديد (v${remoteVer}) متاح على GitHub!</strong><br>قم بتشغيل ملف <code>تحديث_المنظومة.bat</code> الموجود بمجلد البرنامج، ثم اضغط على زر [ريلود للإضافة] بالأسفل.</span>`;
+          }
+        } else {
+          if (btnCheckUpdate) btnCheckUpdate.classList.remove('has-update');
+          if (updateStatusMsg) {
+            updateStatusMsg.className = 'update-status-alert success';
+            updateStatusMsg.innerHTML = `<span>✅ <strong>المنظومة محدثة بالكامل لأحدث إصدار (v${currentLocalVersion})!</strong> لا توجد تحديثات معلقة.</span>`;
+          }
+        }
+        return;
+      }
+
+      // 2. Fallback: Check Commits API
+      const commitRes = await fetch('https://api.github.com/repos/KillD00zer/certi_processing_tools/commits/main?per_page=1', { cache: 'no-store' });
+      if (commitRes.ok) {
+        const commitData = await commitRes.json();
+        const sha = (commitData && commitData.sha) ? commitData.sha.substring(0, 7) : 'Latest';
+        if (lblRemoteVersion) lblRemoteVersion.textContent = `Commit: ${sha}`;
+        if (updateStatusMsg) {
+          updateStatusMsg.className = 'update-status-alert info';
+          updateStatusMsg.innerHTML = `<span>🌐 متصل بمستودع GitHub بنجاح! آخر Commit: <code>${sha}</code>.<br>لتحديث ملفاتك إلى آخر كود مرفوع، شغل <code>تحديث_المنظومة.bat</code> ثم اضغط ريلود.</span>`;
+        }
+      } else {
+        throw new Error('GitHub API response status: ' + commitRes.status);
+      }
+    } catch (e) {
+      if (!silent) {
+        if (lblRemoteVersion) lblRemoteVersion.textContent = 'غير متصل';
+        if (updateStatusMsg) {
+          updateStatusMsg.className = 'update-status-alert info';
+          updateStatusMsg.innerHTML = `<span>💡 تأكد من اتصال الإنترنت. يمكنك في أي وقت تشغيل ملف <code>تحديث_المنظومة.bat</code> بمجلد البرنامج لتنزيل أحدث التحديثات تلقائياً.</span>`;
+        }
+      }
+    }
+  }
+
+  if (btnCheckUpdate && modalUpdateDialog) {
+    btnCheckUpdate.addEventListener('click', () => {
+      modalUpdateDialog.style.display = 'flex';
+      checkGithubUpdate(false);
+    });
+  }
+
+  if (btnCloseUpdateModal && modalUpdateDialog) {
+    btnCloseUpdateModal.addEventListener('click', () => {
+      modalUpdateDialog.style.display = 'none';
+    });
+  }
+
+  if (modalUpdateDialog) {
+    modalUpdateDialog.addEventListener('click', (e) => {
+      if (e.target === modalUpdateDialog) {
+        modalUpdateDialog.style.display = 'none';
+      }
+    });
+  }
+
+  if (btnReloadExtension) {
+    btnReloadExtension.addEventListener('click', () => {
+      if (chrome.runtime && chrome.runtime.reload) {
+        showToast('🔄 جاري إعادة تشغيل الإضافة وتفريغ الذاكرة...');
+        setTimeout(() => {
+          chrome.runtime.reload();
+        }, 300);
+      } else {
+        window.location.reload();
+      }
+    });
+  }
+
+  if (btnDownloadUpdaterBat) {
+    btnDownloadUpdaterBat.addEventListener('click', () => {
+      const batContent = `@echo off\r\nchcp 65001 >nul\r\ntitle تحديث منظومة المتغيرات المكانية\r\necho جاري تنزيل آخر تحديث من GitHub...\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "$zip = Join-Path $env:TEMP 'ext.zip'; $ext = Join-Path $env:TEMP 'ext_unpacked'; Invoke-WebRequest 'https://github.com/KillD00zer/certi_processing_tools/archive/refs/heads/main.zip' -OutFile $zip; Expand-Archive $zip -DestinationPath $ext -Force; $sub = Get-ChildItem $ext | Select-Object -First 1; $src = Join-Path $sub.FullName 'extension'; if(Test-Path $src){ Copy-Item -Path \\"$src\\\\*\\" -Destination '%~dp0extension' -Recurse -Force } else { Copy-Item -Path \\"$($sub.FullName)\\\\*\\" -Destination '%~dp0' -Recurse -Force }; Remove-Item $ext -Recurse -Force; Remove-Item $zip -Force; Write-Host 'تم التحديث بنجاح!' -ForegroundColor Green;"\r\necho.\r\necho تم التحديث بنجاح! يمكنك الآن الضغط على زر [ريلود للإضافة] في الشريط الجانبي.\r\npause\r\n`;
+      const blob = new Blob([batContent], { type: 'text/plain;charset=utf-8' });
+      saveAs(blob, 'تحديث_المنظومة.bat');
+      showToast('📥 تم تنزيل ملف تحديث_المنظومة.bat');
+    });
+  }
+
+  // Silent update check in background 2.5 seconds after launch
+  setTimeout(() => {
+    checkGithubUpdate(true);
+  }, 2500);
+
   // Toast Helper
   function showToast(msg) {
     toast.textContent = msg;
