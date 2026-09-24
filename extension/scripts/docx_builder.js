@@ -56,6 +56,11 @@
   function calculatePolygonCentroid(parcel) {
     if (!parcel) return { lon: null, lat: null };
 
+    // 0. If user edited / provided custom centroid, prioritize it directly
+    if (parcel.centroid && parcel.centroid.lon !== undefined && parcel.centroid.lat !== undefined && !isNaN(parcel.centroid.lon) && !isNaN(parcel.centroid.lat)) {
+      return { lon: Number(parcel.centroid.lon), lat: Number(parcel.centroid.lat) };
+    }
+
     // 1. Try polygon vertices first
     const vertices = parcel.vertices || [];
     if (Array.isArray(vertices) && vertices.length >= 3) {
@@ -80,23 +85,30 @@
 
       const n = pts.length;
       if (n >= 3) {
+        // High-precision origin-shift to eliminate floating point cancellation in WGS84 coordinates:
+        const x0 = pts[0][0];
+        const y0 = pts[0][1];
+        const relPts = pts.map(p => [p[0] - x0, p[1] - y0]);
+
         let signedArea = 0;
         let cx = 0;
         let cy = 0;
         for (let i = 0; i < n; i++) {
           const j = (i + 1) % n;
-          const cross = (pts[i][0] * pts[j][1]) - (pts[j][0] * pts[i][1]);
+          const cross = (relPts[i][0] * relPts[j][1]) - (relPts[j][0] * relPts[i][1]);
           signedArea += cross;
-          cx += (pts[i][0] + pts[j][0]) * cross;
-          cy += (pts[i][1] + pts[j][1]) * cross;
+          cx += (relPts[i][0] + relPts[j][0]) * cross;
+          cy += (relPts[i][1] + relPts[j][1]) * cross;
         }
         signedArea = signedArea / 2.0;
 
         if (Math.abs(signedArea) > 1e-12) {
           cx = cx / (6.0 * signedArea);
           cy = cy / (6.0 * signedArea);
-          if (!isNaN(cx) && !isNaN(cy)) {
-            return { lon: cx, lat: cy };
+          const trueCx = cx + x0;
+          const trueCy = cy + y0;
+          if (!isNaN(trueCx) && !isNaN(trueCy)) {
+            return { lon: trueCx, lat: trueCy };
           }
         }
 
@@ -453,7 +465,58 @@
     const imageDocElements = [];
 
     if (!isPortrait) {
-      if (shotCount === 4) {
+      if (shotCount === 0) {
+        // 0 SHOTS: Imported Certificate or Data-Only Export
+        imageDocElements.push(new Table({
+          width: { size: usableWidth, type: WidthType.DXA },
+          alignment: AlignmentType.CENTER,
+          borders: borderThinBlack,
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  width: { size: usableWidth, type: WidthType.DXA },
+                  borders: borderThinBlack,
+                  shading: { fill: 'F8FAFC', type: ShadingType.CLEAR },
+                  verticalAlign: VerticalAlign.CENTER,
+                  margins: { top: 350, bottom: 350, left: 200, right: 200 },
+                  children: [
+                    new Paragraph({
+                      alignment: AlignmentType.CENTER,
+                      bidirectional: true,
+                      spacing: { before: 40, after: 40 },
+                      children: [
+                        new TextRun({
+                          text: 'شهادة بيان ومطابقة مكانية (بيانات نصية ومساحية)',
+                          font: 'Arial',
+                          bold: true,
+                          size: 22,
+                          rightToLeft: true,
+                          color: '0F172A'
+                        })
+                      ]
+                    }),
+                    new Paragraph({
+                      alignment: AlignmentType.CENTER,
+                      bidirectional: true,
+                      spacing: { before: 20, after: 20 },
+                      children: [
+                        new TextRun({
+                          text: 'تم استيراد واعتماد بيانات هذه الشهادة بعد مراجعة إحداثيات مركز الثقل والبيانات الإدارية.',
+                          font: 'Arial',
+                          size: 17,
+                          rightToLeft: true,
+                          color: '475569'
+                        })
+                      ]
+                    })
+                  ]
+                })
+              ]
+            })
+          ]
+        }));
+      } else if (shotCount === 4) {
         // 4 SHOTS: 2x2 Grid (2 on top, 2 on bottom) - matching user requirement
         const colDxa = Math.floor(usableWidth / 2);
         const colDxa2 = usableWidth - colDxa;

@@ -9,7 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="preview.css">
   
-  <!-- Libraries for CSV & DOCX fallback -->
+  <!-- Libraries for CSV, DOCX & PDF import/export -->
+  <script src="../libs/jszip.min.js"></script>
+  <script src="../libs/pdf.min.js"></script>
   <script src="../libs/docx.umd.js"></script>
   <script src="../libs/FileSaver.min.js"></script>
   <script src="../scripts/template_assets.js"></script>
@@ -29,6 +31,12 @@
     </div>
 
     <div class="toolbar-actions">
+      <!-- Import Previous Project / Certificate (JSON / DOCX / PDF) -->
+      <button id="btn-import-cert" class="btn-tool btn-tool-import" title="استيراد ملف مشروع سابق (JSON) بكافة بياناته وصوره للتعديل الفوري">
+        <span>📂 استيراد مشروع (JSON)</span>
+      </button>
+      <input type="file" id="input-import-cert" accept=".json,.certi,.docx,.pdf" style="display: none;">
+
       <!-- Rotate 90 deg for full portrait print -->
       <button id="btn-rotate-90" class="btn-tool btn-tool-accent" title="تدوير الورقة 90 درجة لملء الصفحة الطولية بالكامل A4">
         <span id="rotate-icon">🔄</span>
@@ -43,14 +51,9 @@
         </button>
       </div>
 
-      <!-- Download CSV -->
-      <button id="btn-download-csv" class="btn-tool btn-tool-secondary" title="تنزيل ملف الإحداثيات Polygon.csv">
-        <span>📥 تنزيل Polygon CSV</span>
-      </button>
-
-      <!-- Download DOCX (bonus) -->
-      <button id="btn-download-docx" class="btn-tool btn-tool-secondary" title="تحميل نسخة Word Docx">
-        <span>📄 تنزيل Word</span>
+      <!-- Save Project File (JSON) -->
+      <button id="btn-save-cert-draft" class="btn-tool btn-tool-secondary" title="حفظ وتنزيل كامل بيانات المشروع والصور كملف JSON باسم المواطن والمركز">
+        <span>💾 حفظ ملف المشروع (JSON)</span>
       </button>
 
       <!-- Primary Print / Save as PDF Button -->
@@ -65,53 +68,139 @@
     <span>💡 <strong>نصيحة للطباعة:</strong> تم ضبط الصفحة افتراضياً لتطبع بالعرض <strong>Landscape</strong> بكامل الورقة. وإذا رغبت بالطباعة في وضع طولي <strong>Portrait</strong>، اضغط زر <strong>"🔄 تدوير 90°"</strong> بالأعلى لتدوير الشهادة وملء الصفحة الطولية 100% بدون أي تصغير أو فراغات!</span>
   </div>
 
-  <!-- Interactive Dynamic Tuning Bar (Screen only, hidden during print) -->
-  <aside class="tuning-bar no-print" id="tuning-bar">
-    <div class="tuning-section">
-      <span class="tuning-title">📐 توزيع الصور:</span>
-      <div class="tuning-btn-group">
-        <button id="btn-layout-auto" class="btn-tune active" title="توزيع ذكي تلقائي حسب عدد الصور ومساحة الصفحة" type="button">⚡ تلقائي ذكي</button>
-        <button id="btn-layout-1row" class="btn-tune" title="فرض الصور في صف أفقي واحد" type="button">↔️ صف واحد</button>
-        <button id="btn-layout-2rows" class="btn-tune" title="توزيع الصور على صفين (2×2 أو 3×2)" type="button">⊞ صفين</button>
+  <!-- Layout Editor Toggle Button (floating, hidden during print) -->
+  <button id="btn-toggle-editor" class="editor-toggle-btn no-print" title="فتح/إغلاق لوحة تنسيق الصفحة">
+    ⚙️ تنسيق الصفحة
+  </button>
+
+  <!-- Layout Editor Side Drawer (hidden during print) -->
+  <aside id="layout-editor" class="layout-editor no-print">
+    <div class="editor-header">
+      <h3>⚙️ تنسيق الصفحة</h3>
+      <button id="btn-close-editor" class="editor-close-btn" title="إغلاق" type="button">✕</button>
+    </div>
+
+    <!-- Section 1: Image Grid Layout -->
+    <div class="editor-section">
+      <h4 class="editor-section-title">📐 شبكة الصور</h4>
+      <div class="grid-layout-options" id="grid-layout-options">
+        <button class="grid-opt active" data-layout="auto" title="توزيع ذكي تلقائي" type="button">
+          <span class="grid-icon">⚡</span><span>تلقائي</span>
+        </button>
+        <button class="grid-opt" data-layout="1row" title="صف واحد" type="button">
+          <span class="grid-icon">▬</span><span>صف واحد</span>
+        </button>
+        <button class="grid-opt" data-layout="2rows" title="صفين" type="button">
+          <span class="grid-icon">⊞</span><span>صفين</span>
+        </button>
       </div>
     </div>
 
-    <div class="tuning-divider"></div>
+    <!-- Section 2: Section Sizes & Spacing -->
+    <div class="editor-section">
+      <h4 class="editor-section-title">📏 أحجام ومسافات الأقسام</h4>
 
-    <div class="tuning-section">
-      <span class="tuning-title">🎚️ ارتفاع الصور:</span>
-      <div class="tuning-slider-box">
-        <input type="range" id="slider-card-height" min="100" max="260" step="5" value="160">
-        <span id="label-card-height" class="tuning-val">160px</span>
+      <div class="editor-control">
+        <label>ارتفاع الصور</label>
+        <div class="slider-row">
+          <input type="range" id="ed-img-height" min="50" max="450" step="5" value="160">
+          <span id="ed-img-height-val" class="slider-val">160px</span>
+        </div>
+      </div>
+
+      <div class="editor-control">
+        <label>المسافات بين الأقسام</label>
+        <div class="slider-row">
+          <input type="range" id="ed-section-spacing" min="0" max="35" step="1" value="8">
+          <span id="ed-section-spacing-val" class="slider-val">8px</span>
+        </div>
+      </div>
+
+      <div class="editor-control">
+        <label>المسافات بين الصور</label>
+        <div class="slider-row">
+          <input type="range" id="ed-section-gap" min="0" max="40" step="1" value="8">
+          <span id="ed-section-gap-val" class="slider-val">8px</span>
+        </div>
+      </div>
+
+      <div class="editor-control">
+        <label>حجم خط التعليق</label>
+        <div class="slider-row">
+          <input type="range" id="ed-caption-font" min="7" max="16" step="0.5" value="10">
+          <span id="ed-caption-font-val" class="slider-val">10pt</span>
+        </div>
       </div>
     </div>
 
-    <div class="tuning-divider"></div>
+    <!-- Section 3: Logo Sizes -->
+    <div class="editor-section">
+      <h4 class="editor-section-title">🏛️ حجم اللوجوهات</h4>
 
-    <div class="tuning-section">
-      <span class="tuning-title">🔤 حجم خط التعليق:</span>
-      <div class="tuning-btn-group">
-        <button id="btn-font-down" class="btn-tune" title="تصغير خط التوصيف" type="button">A-</button>
-        <span id="label-font-size" class="tuning-val">10pt</span>
-        <button id="btn-font-up" class="btn-tune" title="تكبير خط التوصيف" type="button">A+</button>
+      <div class="editor-control">
+        <label>لوجو المتغيرات (يسار)</label>
+        <div class="slider-row">
+          <input type="range" id="ed-logo-spatial" min="40" max="115" step="2" value="100">
+          <span id="ed-logo-spatial-val" class="slider-val">100px</span>
+        </div>
+      </div>
+
+      <div class="editor-control">
+        <label>شعار المحافظة (يمين)</label>
+        <div class="slider-row">
+          <input type="range" id="ed-logo-gov" min="40" max="130" step="2" value="56">
+          <span id="ed-logo-gov-val" class="slider-val">56px</span>
+        </div>
       </div>
     </div>
 
-    <div class="tuning-divider"></div>
-
-    <div class="tuning-section">
-      <span class="tuning-title">🔲 تباعد الصور:</span>
-      <div class="tuning-btn-group">
-        <button id="btn-gap-sm" class="btn-tune" title="تباعد ضيق (4px)" type="button">ضيق</button>
-        <button id="btn-gap-md" class="btn-tune active" title="تباعد متوسط (8px)" type="button">متوسط</button>
-        <button id="btn-gap-lg" class="btn-tune" title="تباعد واسع (12px)" type="button">واسع</button>
+    <!-- Section 4: Image Fit -->
+    <div class="editor-section">
+      <h4 class="editor-section-title">🖼️ احتواء الصورة</h4>
+      <div class="fit-toggle-group" id="fit-toggle-group">
+        <button class="fit-opt" data-fit="contain" title="الصورة كاملة بدون قص" type="button">Contain</button>
+        <button class="fit-opt active" data-fit="cover" title="ملء البرواز بالكامل" type="button">Cover</button>
       </div>
     </div>
 
-    <div class="tuning-actions">
-      <button id="btn-reset-tuning" class="btn-tune-reset" title="إعادة الضبط للحسابات الجغرافية التلقائية" type="button">↺ ضبط تلقائي</button>
+    <!-- Section 5: Fit to Page -->
+    <div class="editor-section">
+      <button id="btn-fit-page" class="editor-action-btn" title="ضبط تلقائي لملاءمة A4 بالضبط" type="button">
+        🎯 ملاءمة تلقائية للصفحة
+      </button>
+    </div>
+
+    <!-- Actions -->
+    <div class="editor-actions">
+      <button id="btn-save-preset" class="editor-save-btn" title="حفظ التنسيق الحالي كقالب افتراضي" type="button">
+        ⭐ حفظ كقالب افتراضي
+      </button>
+      <button id="btn-reset-layout" class="editor-reset-btn" title="إعادة الضبط للقيم الأصلية" type="button">
+        ↺ إعادة الضبط
+      </button>
     </div>
   </aside>
+
+  <!-- Floating Text Formatting Toolbar (Screen only - Hidden on Print) -->
+  <div id="text-format-toolbar" class="text-format-toolbar no-print" style="display: none;">
+    <div class="text-toolbar-inner">
+      <span class="tb-title">تنسيق الخط:</span>
+      <button type="button" id="btn-text-size-inc" class="btn-tb" title="تكبير الخط (+)">
+        <span>A+</span>
+      </button>
+      <button type="button" id="btn-text-size-dec" class="btn-tb" title="تصغير الخط (-)">
+        <span>A-</span>
+      </button>
+      <span id="text-size-badge" class="tb-badge">10pt</span>
+      <div class="tb-sep"></div>
+      <button type="button" id="btn-text-bold" class="btn-tb" title="تغميق الخط (Bold)">
+        <strong>B</strong>
+      </button>
+      <button type="button" id="btn-text-reset" class="btn-tb btn-tb-reset" title="استعادة الخط الافتراضي">
+        <span>↺</span>
+      </button>
+    </div>
+  </div>
 
   <!-- Sheet Container for Printable A4 Page -->
   <main class="preview-stage">
@@ -125,16 +214,16 @@
           <div class="header-col header-gov">
             <img id="img-dakahlia-logo" src="" alt="شعار محافظة الدقهلية" class="logo-dakahlia">
             <div class="gov-text">
-              <p class="gov-line1">محافظة الدقهلية</p>
-              <p class="gov-line2">ديوان عام المحافظة</p>
-              <p class="gov-line3">وحدة المتغيرات المكانية</p>
+              <p class="gov-line1" contenteditable="true" title="انقر لتعديل النص">محافظة الدقهلية</p>
+              <p class="gov-line2" contenteditable="true" title="انقر لتعديل النص">ديوان عام المحافظة</p>
+              <p class="gov-line3" contenteditable="true" title="انقر لتعديل النص">وحدة المتغيرات المكانية</p>
             </div>
           </div>
 
           <!-- Center: Title Box -->
           <div class="header-col header-title">
             <div class="title-box">
-              <h1>بيان تسلسل زمني</h1>
+              <h1 contenteditable="true" title="انقر لتعديل العنوان">بيان تسلسل زمني</h1>
             </div>
           </div>
 
@@ -158,12 +247,12 @@
               <table class="table-meta">
                 <thead>
                   <tr>
-                    <th style="width: 28%;">اسم المواطن</th>
-                    <th style="width: 14%;">خط الطول</th>
-                    <th style="width: 14%;">خط العرض</th>
-                    <th style="width: 14%;">المركز</th>
-                    <th style="width: 15%;">الوحدة المحلية</th>
-                    <th style="width: 15%;">العنوان / الحوض</th>
+                    <th style="width: 27%;" contenteditable="true" title="انقر لتعديل اسم العمود">اسم المواطن</th>
+                    <th style="width: 14%;" contenteditable="true" title="انقر لتعديل اسم العمود">خط الطول</th>
+                    <th style="width: 14%;" contenteditable="true" title="انقر لتعديل اسم العمود">خط العرض</th>
+                    <th style="width: 15%;" contenteditable="true" title="انقر لتعديل اسم العمود">المركز</th>
+                    <th style="width: 15%;" contenteditable="true" title="انقر لتعديل اسم العمود">الوحدة المحلية</th>
+                    <th style="width: 15%;" contenteditable="true" title="انقر لتعديل اسم العمود">العنوان / الحوض</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -189,33 +278,33 @@
         <!-- 4. Official Legal Disclaimer Box -->
         <section class="cert-disclaimer-section">
           <div class="disclaimer-box">
-            <p class="disclaimer-item">١- هذا البيان تم استخراجه بناء على الطلب المقدم من المواطن وطبقا للبيانات والمستندات التي تقدم بها وكذا طبقا لإرشاده للموقع.</p>
-            <p class="disclaimer-item disclaimer-alert">٢- يتحمل المواطن كافة المسئوليات القانونية والجنائية والمدنية كاملا عن أي بيانات او مستندات او ارشاد غير صحيح.</p>
-            <p class="disclaimer-item">٣- هذا البيان لا يعتد به كسند ملكية او فصل ملكية .</p>
-            <p class="disclaimer-item">٤- هذا البيان لا يحدد تاريخ بناء المبنى او تاريخ بناء أي دور في المبنى .</p>
-            <p class="disclaimer-item">٥- هذا البيان طبقا للقطات الصورة الفضائية المتاحة على برنامج Google Earth .</p>
+            <p class="disclaimer-item" contenteditable="true" title="انقر لتعديل بند الإقرار">١- هذا البيان تم استخراجه بناء على الطلب المقدم من المواطن وطبقا للبيانات والمستندات التي تقدم بها وكذا طبقا لإرشاده للموقع.</p>
+            <p class="disclaimer-item disclaimer-alert" contenteditable="true" title="انقر لتعديل بند الإقرار">٢- يتحمل المواطن كافة المسئوليات القانونية والجنائية والمدنية كاملا عن أي بيانات او مستندات او ارشاد غير صحيح.</p>
+            <p class="disclaimer-item" contenteditable="true" title="انقر لتعديل بند الإقرار">٣- هذا البيان لا يعتد به كسند ملكية او فصل ملكية .</p>
+            <p class="disclaimer-item" contenteditable="true" title="انقر لتعديل بند الإقرار">٤- هذا البيان لا يحدد تاريخ بناء المبنى او تاريخ بناء أي دور في المبنى .</p>
+            <p class="disclaimer-item" contenteditable="true" title="انقر لتعديل بند الإقرار">٥- هذا البيان طبقا للقطات الصورة الفضائية المتاحة على برنامج Google Earth .</p>
           </div>
         </section>
 
         <!-- 5. Signatory Block (3 Columns) -->
         <footer class="cert-footer">
           <div class="sig-col sig-right">
-            <p class="sig-title">مسئول المتغيرات المكانية</p>
-            <p class="sig-space">&nbsp;</p>
+            <p class="sig-title" contenteditable="true" title="انقر لتعديل المسمى الوظيفي">مسئول المتغيرات المكانية</p>
+            <div class="sig-space" contenteditable="true" title="مساحة الإمضاء والتوقيع">&nbsp;</div>
             <p class="sig-name" id="sig-surveyor" contenteditable="true" title="انقر لتعديل الاسم">الاسم: ....................................</p>
           </div>
 
           <div class="sig-col sig-center">
-            <p class="sig-title">مدير وحدة المتغيرات المكانية</p>
-            <p class="sig-space">&nbsp;</p>
+            <p class="sig-title" contenteditable="true" title="انقر لتعديل المسمى الوظيفي">مدير وحدة المتغيرات المكانية</p>
+            <div class="sig-space" contenteditable="true" title="مساحة الإمضاء والتوقيع">&nbsp;</div>
             <p class="sig-name" id="sig-director" contenteditable="true" title="انقر لتعديل الاسم">مهندسة / مروة محمد رضوان</p>
           </div>
 
           <div class="sig-col sig-left">
-            <p class="sig-title sig-accent">يعتمد ،،</p>
-            <p class="sig-subtitle">السكرتير العام للمحافظة</p>
+            <p class="sig-title sig-accent" contenteditable="true" title="انقر لتعديل الاعتماد">يعتمد ،، السكرتير العام للمحافظة</p>
+            <div class="sig-space" contenteditable="true" title="مساحة الإمضاء والتوقيع">&nbsp;</div>
             <p class="sig-name" id="sig-reviewer" contenteditable="true" title="انقر لتعديل الاسم">د / عماد عبدالله احمد</p>
-            <p class="sig-rank">وكيل أول الوزارة</p>
+            <p class="sig-rank" contenteditable="true" title="انقر لتعديل الدرجة الوظيفية">وكيل أول الوزارة</p>
           </div>
         </footer>
 

@@ -23,6 +23,13 @@
   let lastCameraKey = '';
   let isPolygonVisible = true;
   let overlayMode = 'polygon'; // 'polygon' | 'point'
+  let isOverlayLocked = true; // Lock/Unlock coordinate plotting
+  let overlayOffset = { dLat: 0, dLon: 0 }; // Lat/Lon adjustment for tilt/angle
+  let pinTextColor = '#fbbf24'; // Customizable text & marker color
+  let pinTextSize = 12; // Customizable text size (px)
+  let pinCustomText = '🎯 المركز'; // Customizable label text
+  let pinTextPosition = 'below'; // 'above' | 'below' | 'right' | 'left'
+  let pinShowBg = true; // boolean: show/hide dark background badge
 
   function ensureRoot() {
     let r = document.getElementById('earth-survey-hud-root');
@@ -49,9 +56,29 @@
     return r;
   }
 
-  // Load parcel and overlay mode from storage on startup
+  function saveOverlayOffset() {
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({
+        overlayOffset: overlayOffset,
+        isOverlayLocked: isOverlayLocked
+      });
+    }
+  }
+
+  // Load parcel, overlay mode, and lock/offset/pin styles from storage on startup
   if (chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get(['currentParcel', 'selectedYear', 'overlayMode'], (res) => {
+    chrome.storage.local.get([
+      'currentParcel',
+      'selectedYear',
+      'overlayMode',
+      'isOverlayLocked',
+      'overlayOffset',
+      'pinTextColor',
+      'pinTextSize',
+      'pinCustomText',
+      'pinTextPosition',
+      'pinShowBg'
+    ], (res) => {
       if (res.currentParcel) {
         currentParcel = res.currentParcel;
       }
@@ -60,6 +87,27 @@
       }
       if (res.overlayMode) {
         overlayMode = res.overlayMode;
+      }
+      if (res.isOverlayLocked !== undefined) {
+        isOverlayLocked = res.isOverlayLocked;
+      }
+      if (res.overlayOffset) {
+        overlayOffset = res.overlayOffset;
+      }
+      if (res.pinTextColor) {
+        pinTextColor = res.pinTextColor;
+      }
+      if (res.pinTextSize) {
+        pinTextSize = Number(res.pinTextSize);
+      }
+      if (res.pinCustomText !== undefined) {
+        pinCustomText = res.pinCustomText;
+      }
+      if (res.pinTextPosition) {
+        pinTextPosition = res.pinTextPosition;
+      }
+      if (res.pinShowBg !== undefined) {
+        pinShowBg = res.pinShowBg;
       }
       renderOverlay();
     });
@@ -77,6 +125,34 @@
         }
         if (changes.overlayMode) {
           overlayMode = changes.overlayMode.newValue || 'polygon';
+          needRerender = true;
+        }
+        if (changes.isOverlayLocked !== undefined) {
+          isOverlayLocked = changes.isOverlayLocked.newValue;
+          needRerender = true;
+        }
+        if (changes.overlayOffset) {
+          overlayOffset = changes.overlayOffset.newValue || { dLat: 0, dLon: 0 };
+          needRerender = true;
+        }
+        if (changes.pinTextColor) {
+          pinTextColor = changes.pinTextColor.newValue || '#fbbf24';
+          needRerender = true;
+        }
+        if (changes.pinTextSize) {
+          pinTextSize = Number(changes.pinTextSize.newValue) || 12;
+          needRerender = true;
+        }
+        if (changes.pinCustomText !== undefined) {
+          pinCustomText = changes.pinCustomText.newValue;
+          needRerender = true;
+        }
+        if (changes.pinTextPosition) {
+          pinTextPosition = changes.pinTextPosition.newValue || 'below';
+          needRerender = true;
+        }
+        if (changes.pinShowBg !== undefined) {
+          pinShowBg = changes.pinShowBg.newValue !== false;
           needRerender = true;
         }
         if (needRerender) {
@@ -106,6 +182,7 @@
     const hiddenEls = [];
     try {
       const selectors = [
+        '#earth-survey-nudge-hud',
         'header',
         'earth-header',
         'earth-historical-imagery',
@@ -243,9 +320,12 @@
     const cx = w / 2.0;
     const cy = h / 2.0;
 
+    const offLat = (overlayOffset && overlayOffset.dLat) || 0;
+    const offLon = (overlayOffset && overlayOffset.dLon) || 0;
+
     const points = currentParcel.vertices.map((v) => {
-      const dLonM = (v.lon - centerLon) * mPerDegLon;
-      const dLatM = (v.lat - centerLat) * mPerDegLat;
+      const dLonM = (v.lon + offLon - centerLon) * mPerDegLon;
+      const dLatM = (v.lat + offLat - centerLat) * mPerDegLat;
 
       const px = cx + (dLonM / metersPerPixel);
       const py = cy - (dLatM / metersPerPixel);
@@ -266,19 +346,34 @@
 
     if (overlayMode === 'point') {
       // MODE 2: Center Point with subtle applicant name badge
-      let distinct = points;
-      if (points.length > 3) {
-        const first = points[0];
-        const last = points[points.length - 1];
-        if (Math.abs(first.x - last.x) < 0.5 && Math.abs(first.y - last.y) < 0.5) {
-          distinct = points.slice(0, points.length - 1);
+      let ptX, ptY;
+      const cLon = (currentParcel.centroid && (currentParcel.centroid.lon !== undefined ? currentParcel.centroid.lon : currentParcel.centroid.lng)) ||
+                   (currentParcel.center && (currentParcel.center.lon !== undefined ? currentParcel.center.lon : currentParcel.center.lng)) ||
+                   currentParcel.centerLng;
+      const cLat = (currentParcel.centroid && (currentParcel.centroid.lat !== undefined ? currentParcel.centroid.lat : currentParcel.centroid.latitude)) ||
+                   (currentParcel.center && (currentParcel.center.lat !== undefined ? currentParcel.center.lat : currentParcel.center.latitude)) ||
+                   currentParcel.centerLat;
+      if (cLon && cLat && !isNaN(cLon) && !isNaN(cLat)) {
+        const offsetLon = Number(cLon) + offLon;
+        const offsetLat = Number(cLat) + offLat;
+        const cDxM = (offsetLon - centerLon) * mPerDegLon;
+        const cDyM = (offsetLat - centerLat) * mPerDegLat;
+        ptX = cx + (cDxM / metersPerPixel);
+        ptY = cy - (cDyM / metersPerPixel);
+      } else {
+        let distinct = points;
+        if (points.length > 3) {
+          const first = points[0];
+          const last = points[points.length - 1];
+          if (Math.abs(first.x - last.x) < 0.5 && Math.abs(first.y - last.y) < 0.5) {
+            distinct = points.slice(0, points.length - 1);
+          }
         }
+        let sumX = 0, sumY = 0;
+        distinct.forEach(p => { sumX += p.x; sumY += p.y; });
+        ptX = sumX / distinct.length;
+        ptY = sumY / distinct.length;
       }
-
-      let sumX = 0, sumY = 0;
-      distinct.forEach(p => { sumX += p.x; sumY += p.y; });
-      const ptX = sumX / distinct.length;
-      const ptY = sumY / distinct.length;
 
       const centerGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       centerGroup.setAttribute('class', 'earth-center-point-marker');
@@ -287,10 +382,13 @@
       const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       ring.setAttribute('cx', ptX);
       ring.setAttribute('cy', ptY);
-      ring.setAttribute('r', '10');
-      ring.setAttribute('fill', 'rgba(239, 68, 68, 0.2)');
-      ring.setAttribute('stroke', '#ef4444');
+      ring.setAttribute('r', isOverlayLocked ? '10' : '13');
+      ring.setAttribute('fill', isOverlayLocked ? 'rgba(239, 68, 68, 0.2)' : 'rgba(56, 189, 248, 0.25)');
+      ring.setAttribute('stroke', isOverlayLocked ? '#ef4444' : '#38bdf8');
       ring.setAttribute('stroke-width', '2');
+      if (!isOverlayLocked) {
+        ring.setAttribute('stroke-dasharray', '3,3');
+      }
       ring.setAttribute('filter', 'url(#hud-glow)');
       centerGroup.appendChild(ring);
 
@@ -300,7 +398,7 @@
       centerDot.setAttribute('cy', ptY);
       centerDot.setAttribute('r', '3.5');
       centerDot.setAttribute('fill', '#ffffff');
-      centerDot.setAttribute('stroke', '#ef4444');
+      centerDot.setAttribute('stroke', isOverlayLocked ? '#ef4444' : '#38bdf8');
       centerDot.setAttribute('stroke-width', '1.5');
       centerGroup.appendChild(centerDot);
 
@@ -322,62 +420,123 @@
         centerGroup.appendChild(line);
       });
 
-      // 4. Subtle Applicant Name Label below marker
-      const applicantName = (currentParcel.applicantName || currentParcel.name || 'موقع المعاملة').trim();
+      // 4. Subtle Applicant Name Label below/above/right/left marker with customizable color, size, position, and background
+      const currentTextColor = pinTextColor || '#ffffff';
+      const currentFontSize = pinTextSize || 12;
+      const applicantName = (pinCustomText && pinCustomText !== '🎯 المركز' ? pinCustomText : (currentParcel.applicantName || currentParcel.name || 'موقع المعاملة')).trim();
+      const currentPosition = pinTextPosition || 'below';
+      const isShowBg = pinShowBg !== false;
+
+      const approxCharWidth = currentFontSize * 0.72;
       const badgePadding = 12;
-      const approxCharWidth = 7.5;
-      const badgeWidth = Math.max(70, applicantName.length * approxCharWidth + badgePadding * 2);
-      const badgeHeight = 22;
-      const badgeY = ptY + 16;
+      const badgeWidth = Math.max(60, Math.round(applicantName.length * approxCharWidth + badgePadding * 2));
+      const badgeHeight = Math.round(currentFontSize + 10);
+      const gap = 16;
 
-      // Small dotted connecting notch
-      const notch = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      notch.setAttribute('x1', ptX);
-      notch.setAttribute('y1', ptY + 10);
-      notch.setAttribute('x2', ptX);
-      notch.setAttribute('y2', badgeY);
-      notch.setAttribute('stroke', 'rgba(255, 255, 255, 0.6)');
-      notch.setAttribute('stroke-width', '1');
-      notch.setAttribute('stroke-dasharray', '2,2');
-      centerGroup.appendChild(notch);
+      let bX = 0, bY = 0, tX = 0, tY = 0;
+      if (currentPosition === 'above') {
+        bX = Math.round(ptX - badgeWidth / 2);
+        bY = Math.round(ptY - gap - badgeHeight);
+        tX = ptX;
+        tY = Math.round(bY + currentFontSize + 2);
+      } else if (currentPosition === 'right') {
+        bX = Math.round(ptX + gap);
+        bY = Math.round(ptY - badgeHeight / 2);
+        tX = Math.round(bX + badgeWidth / 2);
+        tY = Math.round(bY + currentFontSize + 2);
+      } else if (currentPosition === 'left') {
+        bX = Math.round(ptX - gap - badgeWidth);
+        bY = Math.round(ptY - badgeHeight / 2);
+        tX = Math.round(bX + badgeWidth / 2);
+        tY = Math.round(bY + currentFontSize + 2);
+      } else {
+        // below
+        bX = Math.round(ptX - badgeWidth / 2);
+        bY = Math.round(ptY + gap);
+        tX = ptX;
+        tY = Math.round(bY + currentFontSize + 2);
+      }
 
-      // Translucent pill background (allows satellite imagery to remain visible underneath)
-      const badgeBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      badgeBg.setAttribute('x', ptX - badgeWidth / 2);
-      badgeBg.setAttribute('y', badgeY);
-      badgeBg.setAttribute('width', badgeWidth);
-      badgeBg.setAttribute('height', badgeHeight);
-      badgeBg.setAttribute('rx', '4');
-      badgeBg.setAttribute('ry', '4');
-      badgeBg.setAttribute('fill', 'rgba(15, 23, 42, 0.65)');
-      badgeBg.setAttribute('stroke', 'rgba(255, 255, 255, 0.35)');
-      badgeBg.setAttribute('stroke-width', '0.8');
-      centerGroup.appendChild(badgeBg);
+      if (isShowBg) {
+        // Connecting notch
+        const notch = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        if (currentPosition === 'above') {
+          notch.setAttribute('x1', ptX);
+          notch.setAttribute('y1', ptY - 10);
+          notch.setAttribute('x2', ptX);
+          notch.setAttribute('y2', bY + badgeHeight);
+        } else if (currentPosition === 'right') {
+          notch.setAttribute('x1', ptX + 10);
+          notch.setAttribute('y1', ptY);
+          notch.setAttribute('x2', bX);
+          notch.setAttribute('y2', ptY);
+        } else if (currentPosition === 'left') {
+          notch.setAttribute('x1', ptX - 10);
+          notch.setAttribute('y1', ptY);
+          notch.setAttribute('x2', bX + badgeWidth);
+          notch.setAttribute('y2', ptY);
+        } else {
+          notch.setAttribute('x1', ptX);
+          notch.setAttribute('y1', ptY + 10);
+          notch.setAttribute('x2', ptX);
+          notch.setAttribute('y2', bY);
+        }
+        notch.setAttribute('stroke', currentTextColor);
+        notch.setAttribute('stroke-width', '1');
+        notch.setAttribute('stroke-dasharray', '2,2');
+        centerGroup.appendChild(notch);
+
+        // Translucent pill background
+        const badgeBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        badgeBg.setAttribute('x', bX);
+        badgeBg.setAttribute('y', bY);
+        badgeBg.setAttribute('width', badgeWidth);
+        badgeBg.setAttribute('height', badgeHeight);
+        badgeBg.setAttribute('rx', '4');
+        badgeBg.setAttribute('ry', '4');
+        badgeBg.setAttribute('fill', 'rgba(15, 23, 42, 0.85)');
+        badgeBg.setAttribute('stroke', currentTextColor);
+        badgeBg.setAttribute('stroke-width', '1');
+        centerGroup.appendChild(badgeBg);
+      }
 
       // Name Text
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', ptX);
-      text.setAttribute('y', badgeY + 15);
+      text.setAttribute('x', tX);
+      text.setAttribute('y', tY);
       text.setAttribute('text-anchor', 'middle');
-      text.setAttribute('fill', '#ffffff');
-      text.setAttribute('font-size', '12');
+      text.setAttribute('fill', currentTextColor);
+      text.setAttribute('font-size', currentFontSize);
       text.setAttribute('font-family', "'Cairo', 'Segoe UI', Tahoma, sans-serif");
       text.setAttribute('font-weight', '600');
       text.setAttribute('letter-spacing', '0.2');
+      if (!isShowBg) {
+        text.setAttribute('paint-order', 'stroke fill');
+        text.setAttribute('stroke', '#0f172a');
+        text.setAttribute('stroke-width', '3');
+        text.setAttribute('stroke-linejoin', 'round');
+      }
       text.textContent = applicantName;
       centerGroup.appendChild(text);
 
       svg.appendChild(centerGroup);
+      setupDraggable(centerGroup, metersPerPixel, mPerDegLat, mPerDegLon);
     } else {
-      // MODE 1: Full Red Polygon outline + numbered vertex circles
+      // MODE 1: Red Polygon outline + numbered vertex circles (inside draggable group)
+      const polyGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      polyGroup.setAttribute('class', 'earth-parcel-draggable-poly');
+
       const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
       polygon.setAttribute('points', ptsStr);
-      polygon.setAttribute('fill', 'none');
+      polygon.setAttribute('fill', isOverlayLocked ? 'none' : 'rgba(239, 68, 68, 0.12)');
       polygon.setAttribute('stroke', '#ef4444');
-      polygon.setAttribute('stroke-width', '3.5');
+      polygon.setAttribute('stroke-width', isOverlayLocked ? '3.5' : '4');
+      if (!isOverlayLocked) {
+        polygon.setAttribute('stroke-dasharray', '8,4');
+      }
       polygon.setAttribute('stroke-linejoin', 'round');
       polygon.setAttribute('filter', 'url(#hud-glow)');
-      svg.appendChild(polygon);
+      polyGroup.appendChild(polygon);
 
       // Vertex Markers & Numbers (1, 2, 3, 4)
       points.forEach((p) => {
@@ -389,7 +548,7 @@
         circle.setAttribute('fill', '#22c55e');
         circle.setAttribute('stroke', '#ffffff');
         circle.setAttribute('stroke-width', '2');
-        svg.appendChild(circle);
+        polyGroup.appendChild(circle);
 
         // Number badge background
         const textBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -399,7 +558,7 @@
         textBg.setAttribute('fill', '#0f172a');
         textBg.setAttribute('stroke', '#38bdf8');
         textBg.setAttribute('stroke-width', '1.5');
-        svg.appendChild(textBg);
+        polyGroup.appendChild(textBg);
 
         // Text label
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -410,17 +569,491 @@
         text.setAttribute('font-size', '10');
         text.setAttribute('font-weight', 'bold');
         text.textContent = p.id;
-        svg.appendChild(text);
+        polyGroup.appendChild(text);
       });
+
+      // Centroid Marker (Visible on map for surveyor alignment)
+      const polyCLon = (currentParcel.centroid && (currentParcel.centroid.lon !== undefined ? currentParcel.centroid.lon : currentParcel.centroid.lng)) ||
+                       (currentParcel.center && (currentParcel.center.lon !== undefined ? currentParcel.center.lon : currentParcel.center.lng)) ||
+                       currentParcel.centerLng;
+      const polyCLat = (currentParcel.centroid && (currentParcel.centroid.lat !== undefined ? currentParcel.centroid.lat : currentParcel.centroid.latitude)) ||
+                       (currentParcel.center && (currentParcel.center.lat !== undefined ? currentParcel.center.lat : currentParcel.center.latitude)) ||
+                       currentParcel.centerLat;
+      if (polyCLon && polyCLat && !isNaN(polyCLon) && !isNaN(polyCLat)) {
+        const offsetLon = Number(polyCLon) + offLon;
+        const offsetLat = Number(polyCLat) + offLat;
+        const cDxM = (offsetLon - centerLon) * mPerDegLon;
+        const cDyM = (offsetLat - centerLat) * mPerDegLat;
+        const cPx = cx + (cDxM / metersPerPixel);
+        const cPy = cy - (cDyM / metersPerPixel);
+
+        const centroidPin = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        centroidPin.setAttribute('id', 'earth-survey-centroid-pin');
+        centroidPin.setAttribute('class', 'earth-survey-centroid-pin');
+        centroidPin.setAttribute('title', `مركز الثقل (اسحب بالفأرة لتعديل الموضع): ${Number(polyCLon).toFixed(6)}, ${Number(polyCLat).toFixed(6)}`);
+        centroidPin.style.pointerEvents = 'auto';
+        centroidPin.style.cursor = 'grab';
+
+        // Invisible generous circular hit area for effortless mouse grabbing
+        const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        hitArea.setAttribute('cx', cPx);
+        hitArea.setAttribute('cy', cPy);
+        hitArea.setAttribute('r', '22');
+        hitArea.setAttribute('fill', 'transparent');
+        hitArea.style.cursor = 'grab';
+        centroidPin.appendChild(hitArea);
+
+        const currentTextColor = pinTextColor || '#fbbf24';
+        const currentFontSize = pinTextSize || 12;
+        const currentTextStr = (pinCustomText !== undefined && pinCustomText !== null && pinCustomText !== '') ? pinCustomText : '🎯 المركز';
+
+        // Crosshair dashed ticks
+        [
+          { x1: cPx - 16, y1: cPy, x2: cPx + 16, y2: cPy },
+          { x1: cPx, y1: cPy - 16, x2: cPx, y2: cPy + 16 }
+        ].forEach(coords => {
+          const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          l.setAttribute('x1', coords.x1);
+          l.setAttribute('y1', coords.y1);
+          l.setAttribute('x2', coords.x2);
+          l.setAttribute('y2', coords.y2);
+          l.setAttribute('stroke', currentTextColor);
+          l.setAttribute('stroke-width', '1.6');
+          l.setAttribute('stroke-dasharray', '3,2');
+          centroidPin.appendChild(l);
+        });
+
+        const cRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        cRing.setAttribute('cx', cPx);
+        cRing.setAttribute('cy', cPy);
+        cRing.setAttribute('r', '12');
+        cRing.setAttribute('fill', 'rgba(15, 23, 42, 0.45)');
+        cRing.setAttribute('stroke', currentTextColor);
+        cRing.setAttribute('stroke-width', '2');
+        centroidPin.appendChild(cRing);
+
+        const cDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        cDot.setAttribute('cx', cPx);
+        cDot.setAttribute('cy', cPy);
+        cDot.setAttribute('r', '4.5');
+        cDot.setAttribute('fill', currentTextColor);
+        cDot.setAttribute('stroke', '#ffffff');
+        cDot.setAttribute('stroke-width', '1.5');
+        centroidPin.appendChild(cDot);
+
+        if (currentTextStr) {
+          const currentPosition = pinTextPosition || 'below';
+          const isShowBg = pinShowBg !== false;
+
+          const approxCharW = currentFontSize * 0.72;
+          const bgW = Math.max(40, Math.round(currentTextStr.length * approxCharW + 16));
+          const bgH = Math.round(currentFontSize + 8);
+          const gap = 16;
+
+          let bgX = 0;
+          let bgY = 0;
+          let textX = 0;
+          let textY = 0;
+
+          if (currentPosition === 'above') {
+            bgX = Math.round(cPx - bgW / 2);
+            bgY = Math.round(cPy - gap - bgH);
+            textX = cPx;
+            textY = Math.round(bgY + currentFontSize + 1);
+          } else if (currentPosition === 'right') {
+            bgX = Math.round(cPx + gap);
+            bgY = Math.round(cPy - bgH / 2);
+            textX = Math.round(bgX + bgW / 2);
+            textY = Math.round(bgY + currentFontSize + 1);
+          } else if (currentPosition === 'left') {
+            bgX = Math.round(cPx - gap - bgW);
+            bgY = Math.round(cPy - bgH / 2);
+            textX = Math.round(bgX + bgW / 2);
+            textY = Math.round(bgY + currentFontSize + 1);
+          } else {
+            // 'below' (default)
+            bgX = Math.round(cPx - bgW / 2);
+            bgY = Math.round(cPy + gap);
+            textX = cPx;
+            textY = Math.round(bgY + currentFontSize + 1);
+          }
+
+          if (isShowBg) {
+            const textBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            textBg.setAttribute('x', bgX);
+            textBg.setAttribute('y', bgY);
+            textBg.setAttribute('width', bgW);
+            textBg.setAttribute('height', bgH);
+            textBg.setAttribute('rx', '4');
+            textBg.setAttribute('fill', 'rgba(15, 23, 42, 0.88)');
+            textBg.setAttribute('stroke', currentTextColor);
+            textBg.setAttribute('stroke-width', '1.2');
+            centroidPin.appendChild(textBg);
+          }
+
+          // Clean official label with customizable color & size
+          const cText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          cText.setAttribute('x', textX);
+          cText.setAttribute('y', textY);
+          cText.setAttribute('text-anchor', 'middle');
+          cText.setAttribute('fill', currentTextColor);
+          cText.setAttribute('font-size', currentFontSize);
+          cText.setAttribute('font-family', "'Cairo', sans-serif");
+          cText.setAttribute('font-weight', 'bold');
+          if (!isShowBg) {
+            cText.setAttribute('paint-order', 'stroke fill');
+            cText.setAttribute('stroke', '#0f172a');
+            cText.setAttribute('stroke-width', '3');
+            cText.setAttribute('stroke-linejoin', 'round');
+          }
+          cText.textContent = currentTextStr;
+          centroidPin.appendChild(cText);
+        }
+
+        svg.appendChild(centroidPin);
+        setupCentroidDraggable(centroidPin, metersPerPixel, mPerDegLat, mPerDegLon);
+      }
+
+      svg.appendChild(polyGroup);
+      setupDraggable(polyGroup, metersPerPixel, mPerDegLat, mPerDegLon);
     }
 
     root.appendChild(svg);
+    renderNudgeHud(metersPerPixel, mPerDegLat, mPerDegLon);
+  }
+
+  function setupCentroidDraggable(element, metersPerPixel, mPerDegLat, mPerDegLon) {
+    if (!element || !currentParcel) return;
+    element.style.pointerEvents = 'auto';
+    element.style.cursor = 'grab';
+
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let startLon = 0;
+    let startLat = 0;
+
+    const onMouseDown = (e) => {
+      if (e.button !== 0) return;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      const curLon = (currentParcel.centroid && currentParcel.centroid.lon) || (currentParcel.center && currentParcel.center.lon) || 0;
+      const curLat = (currentParcel.centroid && currentParcel.centroid.lat) || (currentParcel.center && currentParcel.center.lat) || 0;
+      startLon = Number(curLon);
+      startLat = Number(curLat);
+
+      element.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
+      e.stopPropagation();
+      e.preventDefault();
+
+      const onMouseMove = (moveEvent) => {
+        if (!isDragging) return;
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+
+        element.setAttribute('transform', `translate(${dx}, ${dy})`);
+
+        const dMetersX = dx * metersPerPixel;
+        const dMetersY = -dy * metersPerPixel;
+        const liveLon = (startLon + (dMetersX / mPerDegLon)).toFixed(6);
+        const liveLat = (startLat + (dMetersY / mPerDegLat)).toFixed(6);
+
+        const labelText = element.querySelector('text');
+        if (labelText) {
+          labelText.textContent = `🎯 المركز: ${liveLon}, ${liveLat}`;
+        }
+      };
+
+      const onMouseUp = (upEvent) => {
+        if (isDragging) {
+          isDragging = false;
+          element.style.cursor = 'grab';
+          document.body.style.userSelect = '';
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', onMouseUp);
+
+          const dx = upEvent.clientX - startX;
+          const dy = upEvent.clientY - startY;
+
+          const dMetersX = dx * metersPerPixel;
+          const dMetersY = -dy * metersPerPixel;
+          const finalLon = parseFloat((startLon + (dMetersX / mPerDegLon)).toFixed(7));
+          const finalLat = parseFloat((startLat + (dMetersY / mPerDegLat)).toFixed(7));
+
+          currentParcel.centroid = { lon: finalLon, lat: finalLat };
+          currentParcel.center = { lon: finalLon, lat: finalLat };
+          currentParcel.centerLng = finalLon;
+          currentParcel.centerLat = finalLat;
+          currentParcel.isCentroidUserEdited = true;
+
+          if (chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({ currentParcel: currentParcel });
+          }
+
+          try {
+            chrome.runtime.sendMessage({
+              action: 'CENTROID_DRAGGED',
+              centroid: currentParcel.centroid
+            });
+          } catch (err) {}
+
+          renderOverlay();
+        }
+      };
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    };
+
+    element.addEventListener('mousedown', onMouseDown);
+  }
+
+  function setupDraggable(element, metersPerPixel, mPerDegLat, mPerDegLon) {
+    if (!element) return;
+
+    if (isOverlayLocked) {
+      element.style.pointerEvents = 'none';
+      element.style.cursor = 'default';
+      return;
+    }
+
+    element.style.pointerEvents = 'auto';
+    element.style.cursor = 'grab';
+
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+
+    const onMouseDown = (e) => {
+      if (isOverlayLocked) return;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      element.style.cursor = 'grabbing';
+      e.stopPropagation();
+      e.preventDefault();
+
+      const onMouseMove = (moveEvent) => {
+        if (!isDragging || isOverlayLocked) return;
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+        startX = moveEvent.clientX;
+        startY = moveEvent.clientY;
+
+        const dMetersX = dx * metersPerPixel;
+        const dMetersY = -dy * metersPerPixel;
+
+        overlayOffset.dLon += (dMetersX / mPerDegLon);
+        overlayOffset.dLat += (dMetersY / mPerDegLat);
+
+        renderOverlay();
+      };
+
+      const onMouseUp = () => {
+        if (isDragging) {
+          isDragging = false;
+          element.style.cursor = 'grab';
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', onMouseUp);
+          saveOverlayOffset();
+        }
+      };
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    };
+
+    element.addEventListener('mousedown', onMouseDown);
+  }
+
+  function renderNudgeHud(metersPerPixel, mPerDegLat, mPerDegLon) {
+    let hud = document.getElementById('earth-survey-nudge-hud');
+    if (!currentParcel || !isPolygonVisible) {
+      if (hud) hud.remove();
+      return;
+    }
+
+    if (!hud) {
+      hud = document.createElement('div');
+      hud.id = 'earth-survey-nudge-hud';
+      document.body.appendChild(hud);
+    }
+
+    hud.style.cssText = `
+      position: fixed !important;
+      bottom: 24px !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+      background: rgba(15, 23, 42, 0.95) !important;
+      backdrop-filter: blur(14px) !important;
+      border: 1px solid ${isOverlayLocked ? 'rgba(148, 163, 184, 0.35)' : '#38bdf8'} !important;
+      border-radius: 12px !important;
+      padding: 8px 18px !important;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.65), 0 0 16px ${isOverlayLocked ? 'transparent' : 'rgba(56, 189, 248, 0.35)'} !important;
+      z-index: 10000000 !important;
+      direction: rtl !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 12px !important;
+      font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif !important;
+      font-size: 13px !important;
+      color: #f8fafc !important;
+      pointer-events: auto !important;
+      user-select: none !important;
+      transition: all 0.25s ease !important;
+    `;
+
+    if (isOverlayLocked) {
+      hud.innerHTML = `
+        <span style="display:flex; align-items:center; gap:6px; color:#94a3b8; font-weight:600;">
+          <span style="font-size:16px;">🔒</span> موقع الرسم مثبت
+        </span>
+        <button id="btn-hud-unlock" style="
+          background: rgba(56, 189, 248, 0.2);
+          border: 1px solid rgba(56, 189, 248, 0.5);
+          color: #38bdf8;
+          padding: 6px 14px;
+          border-radius: 6px;
+          font-weight: 700;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.15s ease;
+        ">🔓 فك القفل لتحريك الرسم</button>
+      `;
+      const btnUnlock = hud.querySelector('#btn-hud-unlock');
+      if (btnUnlock) {
+        btnUnlock.onclick = () => {
+          isOverlayLocked = false;
+          saveOverlayOffset();
+          renderOverlay();
+          showToast('🔓 تم فك قفل الرسم: يمكنك الآن سحبه بالماوس أو استخدام أزرار الأسهم لضبطه مع زاوية التصوير');
+        };
+      }
+    } else {
+      hud.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <span style="display:flex; align-items:center; gap:6px; color:#38bdf8; font-weight:700;">
+            <span style="font-size:15px;">🔓</span> وضع ضبط الموقع (زاوية التصوير)
+          </span>
+          <span style="font-size:11px; color:#cbd5e1;">اسحب الرسم بالماوس أو انقر الأسهم للإزاحة الدقيقة</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:4px; margin: 0 4px;">
+          <button id="btn-nudge-up" title="تحريك لأعلى" style="width:30px; height:30px; background:#1e293b; border:1px solid #475569; color:#fff; border-radius:6px; cursor:pointer; font-size:14px;">⬆️</button>
+          <button id="btn-nudge-down" title="تحريك لأسفل" style="width:30px; height:30px; background:#1e293b; border:1px solid #475569; color:#fff; border-radius:6px; cursor:pointer; font-size:14px;">⬇️</button>
+          <button id="btn-nudge-right" title="تحريك يمين" style="width:30px; height:30px; background:#1e293b; border:1px solid #475569; color:#fff; border-radius:6px; cursor:pointer; font-size:14px;">➡️</button>
+          <button id="btn-nudge-left" title="تحريك يسار" style="width:30px; height:30px; background:#1e293b; border:1px solid #475569; color:#fff; border-radius:6px; cursor:pointer; font-size:14px;">⬅️</button>
+        </div>
+        <button id="btn-hud-lock" style="
+          background: linear-gradient(135deg, #0284c7, #0369a1);
+          border: 1px solid #38bdf8;
+          color: #fff;
+          padding: 6px 14px;
+          border-radius: 6px;
+          font-weight: 700;
+          cursor: pointer;
+          font-family: inherit;
+        ">🔒 قفل وتثبيت</button>
+        <button id="btn-hud-reset" title="إعادة ضبط الموضع الأصلي" style="
+          background: rgba(239, 68, 68, 0.2);
+          border: 1px solid rgba(239, 68, 68, 0.4);
+          color: #fca5a5;
+          padding: 6px 10px;
+          border-radius: 6px;
+          font-weight: 600;
+          cursor: pointer;
+          font-family: inherit;
+        ">↺ إعادة ضبط</button>
+      `;
+
+      const nudgeStepMeters = 1.5;
+      const doNudge = (dxM, dyM) => {
+        overlayOffset.dLon += (dxM / mPerDegLon);
+        overlayOffset.dLat += (dyM / mPerDegLat);
+        saveOverlayOffset();
+        renderOverlay();
+      };
+
+      hud.querySelector('#btn-nudge-up').onclick = () => doNudge(0, nudgeStepMeters);
+      hud.querySelector('#btn-nudge-down').onclick = () => doNudge(0, -nudgeStepMeters);
+      hud.querySelector('#btn-nudge-right').onclick = () => doNudge(nudgeStepMeters, 0);
+      hud.querySelector('#btn-nudge-left').onclick = () => doNudge(-nudgeStepMeters, 0);
+
+      hud.querySelector('#btn-hud-lock').onclick = () => {
+        isOverlayLocked = true;
+        saveOverlayOffset();
+        renderOverlay();
+        showToast('🔒 تم تثبيت وقفل موضع الرسم بنجاح');
+      };
+
+      hud.querySelector('#btn-hud-reset').onclick = () => {
+        overlayOffset = { dLat: 0, dLon: 0 };
+        saveOverlayOffset();
+        renderOverlay();
+        showToast('↺ تم استعادة موضع الإحداثيات الأصلي');
+      };
+    }
   }
 
   window.__earthSurveyRefresh = renderOverlay;
 
   // Runtime message listener
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    if (msg.action === 'GET_OVERLAY_STATE') {
+      sendResponse({
+        success: true,
+        isLocked: isOverlayLocked,
+        offset: overlayOffset,
+        mode: overlayMode,
+        visible: isPolygonVisible
+      });
+      return true;
+    }
+
+    if (msg.action === 'SET_OVERLAY_LOCK') {
+      isOverlayLocked = (typeof msg.locked === 'boolean') ? msg.locked : true;
+      saveOverlayOffset();
+      renderOverlay();
+      showToast(isOverlayLocked ? '🔒 تم قفل وتثبيت الرسم' : '🔓 تم فك قفل الرسم للتحريك');
+      sendResponse({ success: true, isLocked: isOverlayLocked });
+      return true;
+    }
+
+    if (msg.action === 'TOGGLE_OVERLAY_LOCK') {
+      isOverlayLocked = !isOverlayLocked;
+      saveOverlayOffset();
+      renderOverlay();
+      showToast(isOverlayLocked ? '🔒 تم قفل وتثبيت الرسم' : '🔓 تم فك قفل الرسم للتحريك');
+      sendResponse({ success: true, isLocked: isOverlayLocked });
+      return true;
+    }
+
+    if (msg.action === 'RESET_OVERLAY_OFFSET') {
+      overlayOffset = { dLat: 0, dLon: 0 };
+      saveOverlayOffset();
+      renderOverlay();
+      showToast('↺ تم إعادة ضبط موضع الرسم إلى الأصل');
+      sendResponse({ success: true, offset: overlayOffset });
+      return true;
+    }
+
+    if (msg.action === 'NUDGE_OVERLAY') {
+      const dxM = msg.dxMeters || 0;
+      const dyM = msg.dyMeters || 0;
+      const cam = getCameraFromUrl();
+      const centerLat = (cam && cam.lat) ? cam.lat : (currentParcel ? currentParcel.center.lat : 31.0);
+      const meanLatRad = centerLat * (Math.PI / 180.0);
+      const mPerDegLat = 111132.92 - 559.82 * Math.cos(2 * meanLatRad);
+      const mPerDegLon = 111412.84 * Math.cos(meanLatRad);
+      overlayOffset.dLon += (dxM / mPerDegLon);
+      overlayOffset.dLat += (dyM / mPerDegLat);
+      saveOverlayOffset();
+      renderOverlay();
+      sendResponse({ success: true, offset: overlayOffset });
+      return true;
+    }
     if (msg.action === 'GET_MAP_BOUNDS') {
       // Keep root visible so SVG overlay appears inside the screenshot if not hidden
       ensureRoot();
@@ -444,8 +1077,44 @@
       return true;
     }
 
+    if (msg.action === 'UPDATE_CENTROID') {
+      if (currentParcel) {
+        currentParcel.centroid = msg.centroid;
+        currentParcel.center = msg.centroid;
+      }
+      renderOverlay();
+      sendResponse({ success: true });
+      return true;
+    }
+
+    if (msg.action === 'UPDATE_PIN_STYLE') {
+      if (msg.pinTextColor !== undefined) pinTextColor = msg.pinTextColor;
+      if (msg.pinTextSize !== undefined) pinTextSize = Number(msg.pinTextSize);
+      if (msg.pinCustomText !== undefined) pinCustomText = msg.pinCustomText;
+      if (msg.pinTextPosition !== undefined) pinTextPosition = msg.pinTextPosition;
+      if (msg.pinShowBg !== undefined) pinShowBg = msg.pinShowBg;
+
+      if (!currentParcel && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get(['currentParcel'], (res) => {
+          if (res && res.currentParcel) {
+            currentParcel = res.currentParcel;
+          }
+          renderOverlay();
+        });
+      } else {
+        renderOverlay();
+      }
+      sendResponse({ success: true });
+      return true;
+    }
+
     if (msg.action === 'LOAD_PARCEL' || msg.action === 'UPDATE_PARCEL') {
       currentParcel = msg.parcel;
+      if (msg.action === 'LOAD_PARCEL') {
+        overlayOffset = { dLat: 0, dLon: 0 };
+        isOverlayLocked = false;
+        saveOverlayOffset();
+      }
       if (msg.overlayMode) {
         overlayMode = msg.overlayMode;
       }
@@ -457,8 +1126,13 @@
 
     if (msg.action === 'CLEAR_PARCEL') {
       currentParcel = null;
+      overlayOffset = { dLat: 0, dLon: 0 };
+      isOverlayLocked = false;
+      saveOverlayOffset();
       const oldSvg = document.getElementById('earth-parcel-svg');
       if (oldSvg) oldSvg.remove();
+      const hud = document.getElementById('earth-survey-nudge-hud');
+      if (hud) hud.remove();
       sendResponse({ success: true });
       return true;
     }

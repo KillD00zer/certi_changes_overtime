@@ -342,6 +342,7 @@
       vertices: finalVertices,
       bounds: { minLon, maxLon, minLat, maxLat },
       center: { lon: centerLon, lat: centerLat },
+      centroid: calculatePolygonCentroid({ vertices: finalVertices, center: { lon: centerLon, lat: centerLat } }),
       centerLng: centerLon,
       centerLat: centerLat,
       diagonalMeters: diagonalMeters,
@@ -528,6 +529,7 @@
       vertices: finalVertices,
       bounds: { minLon, maxLon, minLat, maxLat },
       center: { lon: centerLon, lat: centerLat },
+      centroid: calculatePolygonCentroid({ vertices: finalVertices, center: { lon: centerLon, lat: centerLat } }),
       centerLng: centerLon,
       centerLat: centerLat,
       diagonalMeters: diagonalMeters,
@@ -536,11 +538,93 @@
     };
   }
 
+  /**
+   * Calculates the exact geometric centroid (مركز الثقل الهندسي) of a parcel polygon
+   * Uses Shoelace Polygon Centroid formula with fallback to arithmetic mean of vertices.
+   */
+  function calculatePolygonCentroid(parcel) {
+    if (!parcel) return { lon: null, lat: null };
+
+    // If parcel already has an explicit user-defined centroid, use it
+    if (parcel.centroid && parcel.centroid.lon !== undefined && parcel.centroid.lat !== undefined && !isNaN(parcel.centroid.lon) && !isNaN(parcel.centroid.lat)) {
+      return { lon: Number(parcel.centroid.lon), lat: Number(parcel.centroid.lat) };
+    }
+
+    const vertices = parcel.vertices || [];
+    if (Array.isArray(vertices) && vertices.length >= 3) {
+      const pts = [];
+      for (let i = 0; i < vertices.length; i++) {
+        const v = vertices[i];
+        const x = (v.lon !== undefined ? Number(v.lon) : (v.lng !== undefined ? Number(v.lng) : (v.rawX !== undefined ? Number(v.rawX) : null)));
+        const y = (v.lat !== undefined ? Number(v.lat) : (v.rawY !== undefined ? Number(v.rawY) : null));
+        if (x !== null && y !== null && !isNaN(x) && !isNaN(y)) {
+          pts.push([x, y]);
+        }
+      }
+
+      if (pts.length > 3) {
+        const first = pts[0];
+        const last = pts[pts.length - 1];
+        if (Math.abs(first[0] - last[0]) < 1e-7 && Math.abs(first[1] - last[1]) < 1e-7) {
+          pts.pop();
+        }
+      }
+
+      const n = pts.length;
+      if (n >= 3) {
+        // High-precision origin-shift to eliminate floating point cancellation in WGS84 coordinates:
+        const x0 = pts[0][0];
+        const y0 = pts[0][1];
+        const relPts = pts.map(p => [p[0] - x0, p[1] - y0]);
+
+        let signedArea = 0;
+        let cx = 0;
+        let cy = 0;
+        for (let i = 0; i < n; i++) {
+          const j = (i + 1) % n;
+          const cross = (relPts[i][0] * relPts[j][1]) - (relPts[j][0] * relPts[i][1]);
+          signedArea += cross;
+          cx += (relPts[i][0] + relPts[j][0]) * cross;
+          cy += (relPts[i][1] + relPts[j][1]) * cross;
+        }
+        signedArea = signedArea / 2.0;
+
+        if (Math.abs(signedArea) > 1e-12) {
+          cx = cx / (6.0 * signedArea);
+          cy = cy / (6.0 * signedArea);
+          const trueCx = cx + x0;
+          const trueCy = cy + y0;
+          if (!isNaN(trueCx) && !isNaN(trueCy)) {
+            return { lon: trueCx, lat: trueCy };
+          }
+        }
+
+        let sumX = 0, sumY = 0;
+        for (let i = 0; i < n; i++) {
+          sumX += pts[i][0];
+          sumY += pts[i][1];
+        }
+        return { lon: sumX / n, lat: sumY / n };
+      }
+    }
+
+    if (parcel.center) {
+      const lat = (parcel.center.lat !== undefined) ? Number(parcel.center.lat) : null;
+      const lon = (parcel.center.lon !== undefined) ? Number(parcel.center.lon) : ((parcel.center.lng !== undefined) ? Number(parcel.center.lng) : null);
+      if (lat !== null && lon !== null && !isNaN(lat) && !isNaN(lon)) {
+        return { lon, lat };
+      }
+    }
+
+    return { lon: null, lat: null };
+  }
+
   // Export module to global scope
   global.GeoEngine = {
     detectCrsAndTransform,
     haversineMeters,
     calculatePolygonMetrics,
+    calculatePolygonCentroid,
     parseSurveyRows,
     generatePolygonCsvContent,
     createParcelFromManual,

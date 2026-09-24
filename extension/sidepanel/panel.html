@@ -12,6 +12,7 @@
   <script src="../libs/jszip.min.js"></script>
   <script src="../libs/docx.umd.js"></script>
   <script src="../libs/FileSaver.min.js"></script>
+  <script src="../libs/pdf.min.js"></script>
   
   <!-- Geo Engine, Template Assets & Docx Builder -->
   <script src="../scripts/geo_engine.js"></script>
@@ -42,9 +43,17 @@
 
     <!-- Section 1: Survey Upload & Data Input (With Tabs) -->
     <section class="card section-upload">
-      <div class="card-title">
-        <span class="title-icon">📂</span>
-        <h2>1. بيانات المعاملة والرفع المساحي</h2>
+      <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span class="title-icon">📂</span>
+          <h2>1. بيانات المعاملة والرفع المساحي</h2>
+        </div>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button id="btn-import-project" class="btn btn-xs btn-outline-cyan" type="button" title="استيراد ملف مشروع سابق (JSON) بكافة بياناته وصوره وتعديله فوراً">
+            📂 استيراد مشروع (JSON)
+          </button>
+          <input type="file" id="input-cert-project" accept=".json,.certi" style="display: none;">
+        </div>
       </div>
 
       <!-- Navigation Tabs -->
@@ -61,11 +70,11 @@
       <div id="tab-view-upload" class="tab-view">
         <div id="dropzone" class="dropzone">
           <span class="dropzone-icon">📥</span>
-          <p class="dropzone-text">اسحب وأفلت جدول الرفع المساحي هنا</p>
-          <p class="dropzone-sub">يدعم جداول ArcGIS بصيغ Excel (.xlsx, .xls) أو CSV</p>
+          <p class="dropzone-text">اسحب وأفلت جدول الرفع المساحي أو ملف المشروع هنا</p>
+          <p class="dropzone-sub">يدعم جداول ArcGIS بصيغ Excel أو CSV أو ملفات المشروع (.json)</p>
           <label for="file-input" class="btn btn-secondary btn-file">
             <span>استعراض الملفات...</span>
-            <input type="file" id="file-input" accept=".csv, .xlsx, .xls">
+            <input type="file" id="file-input" accept=".csv, .xlsx, .xls, .json, .certi">
           </label>
         </div>
 
@@ -97,6 +106,10 @@
           <div class="form-group">
             <label for="inp-village">الوحدة المحلية / الشياخة</label>
             <input type="text" id="inp-village" placeholder="اسم القرية أو الشياخة">
+          </div>
+          <div class="form-group full-width">
+            <label for="inp-place">العنوان / الحوض (موروث تلقائياً أو مخصص)</label>
+            <input type="text" id="inp-place" placeholder="مثال: نوسا البحر ــ أجا">
           </div>
         </div>
       </div>
@@ -155,6 +168,12 @@
             <span id="points-count-badge" class="badge-count">4 نقاط</span>
           </div>
           <div class="points-actions-inline">
+            <button id="btn-swap-coords" class="btn btn-sm btn-outline-cyan" type="button" title="تبديل قيم خط الطول والعرض لكافة النقاط (Swap X ⇄ Y)">
+              🔄 تبديل (Swap X ⇄ Y)
+            </button>
+            <button id="btn-toggle-dms" class="btn btn-sm btn-outline-cyan" type="button" title="محول الإحداثيات من درجات ودقائق وثواني (DMS) إلى درجات عشرية (DD)">
+              📐 محول DMS ➔ DD
+            </button>
             <button id="btn-add-point-row" class="btn btn-sm btn-secondary" type="button" title="إضافة صف ركن جديد">
               ➕ إضافة ركن
             </button>
@@ -163,6 +182,47 @@
             </button>
             <button id="btn-clear-points" class="btn btn-sm btn-danger-outline" type="button" title="مسح كافة الأركان">
               🗑️ مسح
+            </button>
+          </div>
+        </div>
+
+        <!-- Expandable DMS to DD Converter Box -->
+        <div id="box-dms-converter" class="dms-converter-box" style="display: none;">
+          <div class="dms-box-header">
+            <span class="dms-box-title">📐 محول الإحداثيات (درجات ودقائق وثواني DMS ➔ درجات عشرية DD)</span>
+            <button type="button" id="btn-close-dms" class="btn-close-box" title="إغلاق">✕</button>
+          </div>
+          <p class="dms-hint">اكتب الدرجات والدقائق والثواني مفصولة بمسافة (مثال: <code>31 20 51.5</code> أو <code>30 43 11 2</code>):</p>
+          
+          <div class="dms-grid">
+            <div class="dms-col">
+              <label for="inp-dms-lng">خط الطول / X (شرق) - DMS</label>
+              <div class="dms-input-row">
+                <input type="text" id="inp-dms-lng" class="inp-mono" placeholder="31 20 51.5 أو 31 20 51 5">
+                <span class="dms-arrow">➔</span>
+                <input type="text" id="out-dd-lng" class="inp-mono out-dd" readonly placeholder="31.347639" title="القيمة المحولة (DD)">
+              </div>
+            </div>
+            
+            <div class="dms-col">
+              <label for="inp-dms-lat">خط العرض / Y (شمال) - DMS</label>
+              <div class="dms-input-row">
+                <input type="text" id="inp-dms-lat" class="inp-mono" placeholder="30 43 11.2 أو 30 43 11 2">
+                <span class="dms-arrow">➔</span>
+                <input type="text" id="out-dd-lat" class="inp-mono out-dd" readonly placeholder="30.719778" title="القيمة المحولة (DD)">
+              </div>
+            </div>
+          </div>
+
+          <div class="dms-actions">
+            <button id="btn-dms-add-point" class="btn btn-sm btn-primary" type="button">
+              ➕ إضافة كنقطة جديدة في الجدول
+            </button>
+            <button id="btn-dms-set-centroid" class="btn btn-sm btn-secondary" type="button">
+              🎯 تعيين كمركز للموقع (Centroid)
+            </button>
+            <button id="btn-dms-copy" class="btn btn-sm btn-outline-cyan" type="button">
+              📋 نسخ القيم (DD)
             </button>
           </div>
         </div>
@@ -181,10 +241,11 @@
           <table id="tbl-manual-points" class="data-table">
             <thead>
               <tr>
-                <th style="width: 40px;">م</th>
-                <th>خط الطول / X (شرق)</th>
-                <th>خط العرض / Y (شمال)</th>
-                <th style="width: 45px;">حذف</th>
+                <th style="width: 52px;" title="ترتيب النقاط (أعلى / أسفل أو سحب بالماوس)">ترتيب</th>
+                <th style="width: 30px;">م</th>
+                <th id="th-coord-col1">خط الطول / X (شرق)</th>
+                <th id="th-coord-col2">خط العرض / Y (شمال)</th>
+                <th style="width: 40px;">حذف</th>
               </tr>
             </thead>
             <tbody id="tbl-manual-points-body">
@@ -232,16 +293,102 @@
         </div>
       </div>
 
+      <!-- Centroid Box (Editable, displayed upon data entry, excluded from screenshots) -->
+      <div class="centroid-card-box">
+        <div class="centroid-header">
+          <div class="centroid-title-group">
+            <span class="centroid-icon">🎯</span>
+            <span class="centroid-label">إحداثيات مركز الثقل (Centroid)</span>
+            <span id="centroid-status-badge" class="badge-subtle">محسوب تلقائياً</span>
+          </div>
+          <button id="btn-recalc-centroid" class="btn btn-xs btn-secondary" type="button" title="إعادة الحساب التلقائي لمركز الثقل من الأركان">
+            ↺ إعادة حساب
+          </button>
+        </div>
+        <div class="centroid-grid">
+          <div class="form-group">
+            <label for="inp-centroid-lng">خط الطول / X (شرق)</label>
+            <input type="text" id="inp-centroid-lng" class="inp-mono text-center" placeholder="31.xxxxxx">
+          </div>
+          <div class="form-group">
+            <label for="inp-centroid-lat">خط العرض / Y (شمال)</label>
+            <input type="text" id="inp-centroid-lat" class="inp-mono text-center" placeholder="30.xxxxxx">
+          </div>
+        </div>
+        <p class="centroid-note">💡 يتم حفظ هذه الإحداثيات وإظهار علامة المركز المحددة في الشهادة الرسمية ولقطات القمر الصناعي بدقة.</p>
+      </div>
+
       <!-- Overlay Display Mode Selector -->
       <div class="overlay-mode-box">
         <span class="overlay-mode-label">نمط الرسم على الخريطة:</span>
         <div class="overlay-mode-toggle">
-          <button id="btn-mode-poly" class="btn-mode active" type="button" title="عرض حدود المضلع الأحمر مع أرقام الأركان">
+          <button id="btn-mode-poly" class="btn-mode active" type="button" title="عرض حدود المضلع الأحمر مع أرقام الأركان وعلامة المركز">
             <span>🟦 مضلع كامل</span>
           </button>
-          <button id="btn-mode-point" class="btn-mode" type="button" title="عرض نقطة المركز فقط مع اسم المواطن بخط شفاف هادئ">
+          <button id="btn-mode-point" class="btn-mode" type="button" title="عرض نقطة المركز فقط مع اسم المواطن">
             <span>📍 نقطة مركز واسم</span>
           </button>
+        </div>
+      </div>
+
+      <!-- Pin Text & Marker Style Controls (Color & Size) -->
+      <div class="pin-style-box">
+        <div class="pin-style-header">
+          <div class="pin-style-title-group">
+            <span class="pin-style-icon">🎨</span>
+            <span class="pin-style-title">التحكم بنص ولون علامة المركز (Pin Text)</span>
+          </div>
+          <span id="pin-style-preview" class="badge-pin-preview">🎯 المركز</span>
+        </div>
+        <div class="pin-style-grid">
+          <div class="form-group pin-text-group">
+            <label for="inp-pin-text">نص العلامة على الخريطة</label>
+            <input type="text" id="inp-pin-text" value="🎯 المركز" placeholder="مثال: 🎯 المركز أو موقع المعاملة">
+          </div>
+          <div class="form-group pin-color-group">
+            <label for="inp-pin-color">لون النص والعلامة</label>
+            <div class="color-picker-row">
+              <input type="color" id="inp-pin-color" value="#fbbf24" class="inp-color-picker" title="اختر أي لون مخصص">
+              <div class="color-presets">
+                <button type="button" class="color-chip active" data-color="#fbbf24" style="background:#fbbf24;" title="أصفر ذهبي"></button>
+                <button type="button" class="color-chip" data-color="#ffffff" style="background:#ffffff;" title="أبيض"></button>
+                <button type="button" class="color-chip" data-color="#38bdf8" style="background:#38bdf8;" title="سماوي"></button>
+                <button type="button" class="color-chip" data-color="#22c55e" style="background:#22c55e;" title="أخضر"></button>
+                <button type="button" class="color-chip" data-color="#ef4444" style="background:#ef4444;" title="أحمر"></button>
+                <button type="button" class="color-chip" data-color="#f97316" style="background:#f97316;" title="برتقالي"></button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group pin-size-group">
+            <div class="size-header-row">
+              <label for="rng-pin-size">حجم الخط</label>
+              <span id="lbl-pin-size-val" class="size-val-badge">12px</span>
+            </div>
+            <input type="range" id="rng-pin-size" class="range-slider" min="9" max="24" step="1" value="12">
+          </div>
+          <div class="form-group pin-pos-group">
+            <label>موضع النص بالنسبة للعلامة</label>
+            <div class="pin-pos-toggle">
+              <button type="button" class="btn-pos-chip" data-pos="above" title="أعلى العلامة">
+                <span>⬆️ أعلى</span>
+              </button>
+              <button type="button" class="btn-pos-chip active" data-pos="below" title="أسفل العلامة">
+                <span>⬇️ أسفل</span>
+              </button>
+              <button type="button" class="btn-pos-chip" data-pos="right" title="يمين العلامة">
+                <span>➡️ يمين</span>
+              </button>
+              <button type="button" class="btn-pos-chip" data-pos="left" title="يسار العلامة">
+                <span>⬅️ يسار</span>
+              </button>
+            </div>
+          </div>
+          <div class="form-group pin-bg-group">
+            <label class="pin-bg-toggle-label">
+              <input type="checkbox" id="chk-pin-bg" checked>
+              <span>إظهار خلفية داكنة محددة للنص (Background)</span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -249,6 +396,10 @@
       <div class="action-buttons-grid">
         <button id="btn-fly-earth" class="btn btn-primary btn-glow full-span" type="button">
           <span>🌍 فتح والانتقال في Google Earth</span>
+        </button>
+        <button id="btn-toggle-lock" class="btn btn-secondary full-span" type="button" title="قفل أو فك قفل تحريك الرسم لمطابقة زاوية التصوير">
+          <span id="lock-btn-icon">🔒</span>
+          <span id="lock-btn-label">تثبيت موضع الرسم (مقفل)</span>
         </button>
         <button id="btn-center-camera" class="btn btn-secondary" type="button">
           <span>🎯 توسيط الكاميرا</span>
@@ -307,6 +458,7 @@
               <option value="2006">2006</option>
               <option value="2005">2005</option>
               <option value="2004">2004</option>
+              <option value="2003">2003</option>
             </select>
           </div>
 
@@ -341,6 +493,8 @@
             <option value="ظهور سقف واعمدة">ظهور سقف واعمدة</option>
             <option value="ظهور سقف وحوائط">ظهور سقف وحوائط</option>
             <option value="ظهور تعليه">ظهور تعليه</option>
+            <option value="ظهور تغطية">ظهور تغطية</option>
+            <option value="ظهور جزء من الدور">ظهور جزء من الدور</option>
             <option value="ظهور تغطية صاج">ظهور تغطية صاج</option>
             <option value="__custom__">✍️ إدخال يدوي مخصص...</option>
           </select>
@@ -356,9 +510,16 @@
           <input type="text" id="inp-inspect-notes" placeholder="مثال: على جزء من الدور الأول...">
         </div>
 
-        <button id="btn-capture-shot" class="btn btn-danger full-width btn-glow-red" type="button">
-          <span>📸 التقاط لقطة القمر الصناعي الآن وتوثيقها</span>
-        </button>
+        <div class="capture-actions-stack" style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+          <button id="btn-capture-shot" class="btn btn-danger full-width btn-glow-red" type="button">
+            <span>📸 التقاط لقطة القمر الصناعي الآن وتوثيقها</span>
+          </button>
+          
+          <button id="btn-upload-local-image" class="btn btn-secondary full-width" type="button" title="إضافة صورة فضائية أو لقطة من جهاز الكمبيوتر مباشرة">
+            <span>📁 إضافة صورة فضائية من الجهاز</span>
+          </button>
+          <input type="file" id="input-local-image" accept="image/*" style="display: none;">
+        </div>
 
         <!-- Fast Capture Tip Banner -->
         <div class="capture-shortcut-tip">
