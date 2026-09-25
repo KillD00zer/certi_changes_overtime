@@ -83,3 +83,4 @@ for f in files:
         top, tl, tc = stack.pop()
         err = f'Unclosed {top} from {tl}:{tc}'
     print(f'{f}: {err if err else "VALID"}')
+ 
