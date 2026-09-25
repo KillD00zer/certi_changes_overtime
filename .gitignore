@@ -1,0 +1,20 @@
+﻿# Data privacy
+*.docx
+!نماذج شهادات/*.xlsx
+~$*.docx
+~$*.xlsx
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+venv/
+.venv/
+
+# System & Editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+.vscode/
+.idea/
