@@ -2350,6 +2350,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCloseUpdateModal = document.getElementById('btn-close-update-modal');
   const lblCurrVersion = document.getElementById('lbl-curr-version');
   const lblRemoteVersion = document.getElementById('lbl-remote-version');
+  const updateReleaseMeta = document.getElementById('update-release-meta');
+  const lblReleaseTag = document.getElementById('lbl-release-tag');
+  const lblReleaseDate = document.getElementById('lbl-release-date');
   const updateStatusMsg = document.getElementById('update-status-msg');
   const btnReloadExtension = document.getElementById('btn-reload-extension');
   const btnDownloadUpdaterBat = document.getElementById('btn-download-updater-bat');
@@ -2359,57 +2362,127 @@ document.addEventListener('DOMContentLoaded', () => {
   if (lblCurrVersion) lblCurrVersion.textContent = `v${currentLocalVersion}`;
   if (appVersionBadge) appVersionBadge.textContent = `v${currentLocalVersion}`;
 
+  function compareVersions(v1, v2) {
+    const p1 = String(v1).replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
+    const p2 = String(v2).replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
+    const len = Math.max(p1.length, p2.length);
+    for (let i = 0; i < len; i++) {
+      const a = p1[i] || 0;
+      const b = p2[i] || 0;
+      if (a > b) return 1;
+      if (a < b) return -1;
+    }
+    return 0;
+  }
+
   async function checkGithubUpdate(silent = false) {
     if (!silent) {
       if (lblRemoteVersion) lblRemoteVersion.textContent = 'جاري الفحص...';
+      if (updateReleaseMeta) updateReleaseMeta.style.display = 'none';
       if (updateStatusMsg) {
         updateStatusMsg.className = 'update-status-alert info';
-        updateStatusMsg.innerHTML = '<span>🔍 جاري الاتصال بمستودع GitHub للتحقق من التحديثات...</span>';
+        updateStatusMsg.innerHTML = '<span>🔍 جاري الاتصال بمستودع GitHub للتحقق من التحديثات الرسمية...</span>';
       }
     }
 
     try {
-      // 1. Check raw manifest.json with timestamp to avoid browser cache
-      const manifestUrl = `https://raw.githubusercontent.com/KillD00zer/certi_processing_tools/main/extension/manifest.json?t=${Date.now()}`;
-      const res = await fetch(manifestUrl, { cache: 'no-store' });
-      if (res.ok) {
-        const remoteData = await res.json();
-        const remoteVer = remoteData.version || currentLocalVersion;
-        if (lblRemoteVersion) lblRemoteVersion.textContent = `v${remoteVer}`;
+      let remoteVersion = null;
+      let releaseTitle = null;
+      let releaseDateStr = null;
 
-        if (remoteVer !== currentLocalVersion) {
-          if (btnCheckUpdate) {
-            btnCheckUpdate.classList.add('has-update');
-            btnCheckUpdate.title = `🚀 يتوفر تحديث جديد (v${remoteVer})! انقر هنا`;
-          }
-          if (updateStatusMsg) {
-            updateStatusMsg.className = 'update-status-alert warning';
-            updateStatusMsg.innerHTML = `<span>🚀 <strong>يوجد إصدار جديد (v${remoteVer}) متاح على GitHub!</strong><br>قم بتشغيل ملف <code>تحديث_المنظومة.bat</code> الموجود بمجلد البرنامج، ثم اضغط على زر [ريلود للإضافة] بالأسفل.</span>`;
-          }
-        } else {
-          if (btnCheckUpdate) btnCheckUpdate.classList.remove('has-update');
-          if (updateStatusMsg) {
-            updateStatusMsg.className = 'update-status-alert success';
-            updateStatusMsg.innerHTML = `<span>✅ <strong>المنظومة محدثة بالكامل لأحدث إصدار (v${currentLocalVersion})!</strong> لا توجد تحديثات معلقة.</span>`;
+      // 1. Check official GitHub Releases API (releases/latest)
+      try {
+        const relRes = await fetch('https://api.github.com/repos/KillD00zer/certi_processing_tools/releases/latest', { cache: 'no-store' });
+        if (relRes.ok) {
+          const relData = await relRes.json();
+          if (relData && relData.tag_name) {
+            releaseTitle = relData.name || relData.tag_name;
+            remoteVersion = relData.tag_name.trim().replace(/^v/i, '');
+            if (relData.published_at) {
+              const d = new Date(relData.published_at);
+              releaseDateStr = `تاريخ الإطلاق: ${d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}`;
+            }
           }
         }
-        return;
+      } catch (relErr) {
+        console.warn('[Update] Releases API warning:', relErr);
       }
 
-      // 2. Fallback: Check Commits API
-      const commitRes = await fetch('https://api.github.com/repos/KillD00zer/certi_processing_tools/commits/main?per_page=1', { cache: 'no-store' });
-      if (commitRes.ok) {
-        const commitData = await commitRes.json();
-        const sha = (commitData && commitData.sha) ? commitData.sha.substring(0, 7) : 'Latest';
-        if (lblRemoteVersion) lblRemoteVersion.textContent = `Commit: ${sha}`;
+      // 2. Check raw manifest.json on main branch in certi_changes_overtime/extension
+      try {
+        const manifestUrl = `https://raw.githubusercontent.com/KillD00zer/certi_processing_tools/main/certi_changes_overtime/extension/manifest.json?t=${Date.now()}`;
+        const mRes = await fetch(manifestUrl, { cache: 'no-store' });
+        if (mRes.ok) {
+          const mData = await mRes.json();
+          const manifestVer = (mData.version || '').trim();
+          if (manifestVer) {
+            if (!remoteVersion || compareVersions(manifestVer, remoteVersion) >= 0) {
+              remoteVersion = manifestVer;
+              if (!releaseTitle) releaseTitle = `Release v${manifestVer}`;
+            }
+          }
+        }
+      } catch (mErr) {
+        console.warn('[Update] Raw manifest warning:', mErr);
+      }
+
+      // 3. Check latest commit date as informative fallback
+      try {
+        const cRes = await fetch('https://api.github.com/repos/KillD00zer/certi_processing_tools/commits/main', { cache: 'no-store' });
+        if (cRes.ok) {
+          const cData = await cRes.json();
+          if (cData && cData.commit) {
+            const sha = cData.sha ? cData.sha.substring(0, 7) : '';
+            const cDate = new Date(cData.commit.committer.date);
+            const dateStr = cDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
+            if (!releaseDateStr) releaseDateStr = `آخر تحديث: ${dateStr} (${sha})`;
+          }
+        }
+      } catch (cErr) {
+        console.warn('[Update] Commits API warning:', cErr);
+      }
+
+      if (!remoteVersion) {
+        throw new Error('لم يتم العثور على إصدار على GitHub');
+      }
+
+      const cleanRemoteVer = remoteVersion.startsWith('v') ? remoteVersion : `v${remoteVersion}`;
+      const cleanLocalVer = currentLocalVersion.startsWith('v') ? currentLocalVersion : `v${currentLocalVersion}`;
+
+      if (lblRemoteVersion) lblRemoteVersion.textContent = cleanRemoteVer;
+      if (lblCurrVersion) lblCurrVersion.textContent = cleanLocalVer;
+
+      if (updateReleaseMeta) {
+        updateReleaseMeta.style.display = 'flex';
+        if (lblReleaseTag) lblReleaseTag.textContent = releaseTitle || cleanRemoteVer;
+        if (lblReleaseDate) lblReleaseDate.textContent = releaseDateStr || '';
+      }
+
+      // Version Comparison
+      const cmp = compareVersions(remoteVersion, currentLocalVersion);
+
+      if (cmp > 0) {
+        // Newer version available!
+        if (btnCheckUpdate) {
+          btnCheckUpdate.classList.add('has-update');
+          btnCheckUpdate.title = `🚀 يتوفر إصدار جديد (${cleanRemoteVer})! انقر هنا للتحديث`;
+        }
+        if (lblRemoteVersion) lblRemoteVersion.style.color = '#4ade80';
         if (updateStatusMsg) {
-          updateStatusMsg.className = 'update-status-alert info';
-          updateStatusMsg.innerHTML = `<span>🌐 متصل بمستودع GitHub بنجاح! آخر Commit: <code>${sha}</code>.<br>لتحديث ملفاتك إلى آخر كود مرفوع، شغل <code>تحديث_المنظومة.bat</code> ثم اضغط ريلود.</span>`;
+          updateStatusMsg.className = 'update-status-alert warning';
+          updateStatusMsg.innerHTML = `<span>🚀 <strong>يتوفر إصدار جديد متاح على GitHub (${cleanRemoteVer})!</strong><br>الإصدار الحالي لديك هو (${cleanLocalVer}). شغّل ملف <code>تحديث_المنظومة.bat</code> بمجلد البرنامج ثم اضغط ريلود للتحديث فوراً.</span>`;
         }
       } else {
-        throw new Error('GitHub API response status: ' + commitRes.status);
+        // Up to date!
+        if (btnCheckUpdate) btnCheckUpdate.classList.remove('has-update');
+        if (lblRemoteVersion) lblRemoteVersion.style.color = '#38bdf8';
+        if (updateStatusMsg) {
+          updateStatusMsg.className = 'update-status-alert success';
+          updateStatusMsg.innerHTML = `<span>✅ <strong>المنظومة محدثة بالكامل لأحدث إصدار (${cleanLocalVer})!</strong> متطابق تماماً مع مستودع GitHub.</span>`;
+        }
       }
     } catch (e) {
+      console.warn('[Update] Error checking update:', e);
       if (!silent) {
         if (lblRemoteVersion) lblRemoteVersion.textContent = 'غير متصل';
         if (updateStatusMsg) {

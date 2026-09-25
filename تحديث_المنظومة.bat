@@ -44,7 +44,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     "    Write-Host '[!] الملف المضغوط فارغ أو غير صالح.' -ForegroundColor Red;" ^
     "    exit 1;" ^
     "}" ^
-    "$srcExtension = Join-Path $innerRoot.FullName 'extension';" ^
+    "$srcExtension = Join-Path $innerRoot.FullName 'certi_changes_overtime\extension';" ^
+    "if (-not (Test-Path $srcExtension)) { $srcExtension = Join-Path $innerRoot.FullName 'extension'; }" ^
     "if (Test-Path $srcExtension) {" ^
     "    Copy-Item -Path \"$srcExtension\*\" -Destination '%EXT_DIR%' -Recurse -Force;" ^
     "    Write-Host '[OK] تم تحديث مجلد الإضافة (extension) بنجاح!' -ForegroundColor Green;" ^

@@ -592,13 +592,18 @@
       <div class="update-modal-body">
         <div class="update-version-row">
           <div class="version-item">
-            <span class="version-label">الإصدار الحالي مثبت:</span>
-            <span class="version-val current-val" id="lbl-curr-version">v3.0</span>
+            <span class="version-label">الإصدار الحالي المثبت:</span>
+            <span class="version-val current-val" id="lbl-curr-version">v3.0.0</span>
           </div>
           <div class="version-item">
-            <span class="version-label">أحدث إصدار على GitHub:</span>
+            <span class="version-label">أحدث إصدار متاح (Release):</span>
             <span class="version-val remote-val" id="lbl-remote-version">جاري الفحص...</span>
           </div>
+        </div>
+
+        <div id="update-release-meta" class="update-release-meta" style="display: none;">
+          <span id="lbl-release-tag" class="release-tag-pill"></span>
+          <span id="lbl-release-date" class="release-date"></span>
         </div>
 
         <div id="update-status-msg" class="update-status-alert info">
