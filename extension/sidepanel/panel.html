@@ -33,7 +33,7 @@
       </div>
     </div>
     <div class="header-actions">
-      <button id="btn-check-update" class="btn-update-header" title="فحص التحديثات من GitHub وإعادة تحميل الإضافة">
+      <button id="btn-check-update" class="btn-update-header" title="فحص التحديثات من GitHub وإعادة تحميل الإضافة" onclick="var m=document.getElementById('modal-update-dialog');if(m){m.style.display='flex';if(window.checkGithubUpdate)window.checkGithubUpdate(false);}">
         <span>🔄 التحديثات</span>
       </button>
       <button id="btn-reset-all" class="btn-reset-header" title="مسح كافة البيانات وتفريغ النموذج لمعاملة جديدة">
@@ -617,7 +617,7 @@
           <span style="font-weight: 800; font-size: 15px; color: #38bdf8;">فحص وتحديث المنظومة (GitHub)</span>
           <span id="update-modal-badge" class="badge-subtle" style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8;">جارٍ الفحص...</span>
         </div>
-        <button type="button" id="btn-close-update-modal" class="btn-close-modal" title="إغلاق">✕</button>
+        <button type="button" id="btn-close-update-modal" class="btn-close-modal" title="إغلاق" onclick="var m=document.getElementById('modal-update-dialog');if(m)m.style.display='none';">✕</button>
       </div>
 
       <div class="update-modal-body">
@@ -654,7 +654,7 @@
         <div class="update-modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 12px; margin-top: 8px;">
           <span style="font-size: 11px; color: #64748b;">مستودع رسمي: KillD00zer/certi_changes_overtime</span>
           <div style="display: flex; gap: 8px;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-dismiss-update-modal" style="padding: 6px 12px; font-size: 12px;">إغلاق</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-dismiss-update-modal" style="padding: 6px 12px; font-size: 12px;" onclick="var m=document.getElementById('modal-update-dialog');if(m)m.style.display='none';">إغلاق</button>
             <button type="button" class="btn btn-primary btn-sm" id="btn-reload-extension" style="padding: 6px 16px; font-size: 12px; font-weight: 800; background: linear-gradient(135deg, #0284c7, #0369a1);">
               🚀 سحب وتطبيق التحديث (Pull & Reload)
             </button>

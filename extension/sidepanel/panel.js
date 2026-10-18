@@ -124,6 +124,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnGenerateDocx = document.getElementById('btn-generate-docx');
   const btnResetAll = document.getElementById('btn-reset-all');
   const toast = document.getElementById('toast');
+  let toastTimer = null;
+  function showToast(message, duration = 3200) {
+    if (!toast) {
+      console.log('[Toast]', message);
+      return;
+    }
+    toast.textContent = message;
+    toast.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, duration);
+  }
 
   // --- 0. TABS SWITCHING ---
   tabBtnUpload.addEventListener('click', () => {
@@ -2209,7 +2222,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const appVersionBadge = document.getElementById('app-version-badge');
 
   const currentLocalVersion = (chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest().version : '3.0.0';
-  let currentLocalCommit = '4ff16aa';
+  let currentLocalCommit = '53bb4ab';
 
   function escapeHtml(str) {
     if (!str) return '';
@@ -2271,6 +2284,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Load build info immediately
   getLocalBuildInfo();
 
+  window.checkGithubUpdate = checkGithubUpdate;
   async function checkGithubUpdate(silent = false) {
     const updateModalBadge = document.getElementById('update-modal-badge');
     const updateCommitsContainer = document.getElementById('update-commits-container');
@@ -2422,11 +2436,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const c = item.commit;
             if (!c) return;
             const fullMsg = c.message || '';
-            const parts = fullMsg.split('
-');
+            const parts = fullMsg.split('\n');
             const subject = parts[0] || 'تحديث برمجي';
-            const body = parts.slice(1).join('
-').trim();
+            const body = parts.slice(1).join('\n').trim();
             const sha = item.sha ? item.sha.substring(0, 7) : '';
             const isCurrent = sha === currentLocalCommit;
             const dateStr = c.author && c.author.date ? new Date(c.author.date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
