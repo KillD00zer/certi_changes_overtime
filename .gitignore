@@ -27,3 +27,5 @@ desktop.ini
 *.lnk
 .vscode/
 .idea/
+
+.browser_profile/

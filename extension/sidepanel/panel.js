@@ -606,8 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function handlePdfCertificateImport(file) {
-    alert('💡 تم تخفيف حجم الإضافة وحذف محرك تفريغ الـ PDF القديم.
-يرجى استيراد ملف الرفع المساحي المباشر (Excel / CSV) أو ملف المشروع السابق (JSON).');
+    alert(`💡 تم تخفيف حجم الإضافة وحذف محرك تفريغ الـ PDF القديم.\nيرجى استيراد ملف الرفع المساحي المباشر (Excel / CSV) أو ملف المشروع السابق (JSON).`);
     return;
   }
 
@@ -2179,29 +2178,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-        const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const csvUrl = URL.createObjectURL(csvBlob);
-        chrome.downloads.download({
-          url: csvUrl,
-          filename: `${folderName}/${csvFilename}`,
-          saveAs: false
-        });
-      } else {
-        // Fallback for browsers
-        saveAs(docxBlob, docFilename);
-        const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        saveAs(csvBlob, csvFilename);
-      }
 
-      showToast(`📄 تم إصدار البيان وملف الرفع في مجلد: ${folderName}`);
-    } catch (err) {
-      console.error(err);
-      alert('حدث خطأ أثناء إصدار الشهادة: ' + err.message);
-    } finally {
-      btnGenerateDocx.disabled = false;
-      btnGenerateDocx.innerHTML = '<span>📄 إصدار بيان التسلسل الزمني وتنزيل المجلد (.docx + .csv)</span>';
-    }
-  });
 
   // --- GITHUB AUTO-UPDATE & EXTENSION RELOAD MANAGER ---
   const btnCheckUpdate = document.getElementById('btn-check-update');

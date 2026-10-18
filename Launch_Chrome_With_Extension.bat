@@ -13,6 +13,7 @@ echo ================================================================
 echo.
 
 set "EXT_PATH=%~dp0extension"
+set "USER_DATA=%~dp0.browser_profile"
 
 :: البحث عن متصفح Chrome أو Edge المثبت على النظام
 set "BROWSER_BIN="
@@ -32,19 +33,27 @@ if "%BROWSER_BIN%"=="" (
     echo [!] لم يتم العثور على متصفح Chrome أو Edge تلقائياً.
     echo يمكنك تثبيت وتفعيل الإضافة يدوياً من المسار:
     echo %EXT_PATH%
-    echo عبر فتح chrome://extensions وتفعيل Developer Mode ثم Load Unpacked.
+    echo عبر فتح edge://extensions أو chrome://extensions وتفعيل Developer Mode ثم Load Unpacked.
     echo.
     pause
     exit /b 1
 )
 
-echo [*] جاري تشغيل المتصفح وتحميل الإضافة تلقائياً...
+echo [*] المتصفح المكتشف: %BROWSER_BIN%
 echo [*] مسار الإضافة: %EXT_PATH%
+echo [*] جاري تشغيل المتصفح وتحميل الإضافة تلقائياً...
 echo.
 
-start "" "%BROWSER_BIN%" --load-extension="%EXT_PATH%" "https://earth.google.com/web"
+:: استخدام بروفايل مخصص لضمان تحميل الإضافة حتى لو كان المتصفح مفتوحاً مسبقاً
+start "" "%BROWSER_BIN%" --user-data-dir="%USER_DATA%" --load-extension="%EXT_PATH%" --no-first-run --no-default-browser-check "https://earth.google.com/web"
 
-echo [OK] تم تشغيل المتصفح بنجاح!
-echo يمكنك الآن النقر على أيقونة الإضافة في شريط الأدوات العلوي أو الجانبي.
-timeout /t 4 > nul
+echo ================================================================
+echo [OK] تم إطلاق المتصفح وتحميل الإضافة بنجاح!
+echo.
+echo 💡 ملحوظة هامة:
+echo    إذا كان المتصفح مفتوحاً من قبل والإضافة مثبتة لديك:
+echo    ادخل على edge://extensions أو chrome://extensions واضغط [↻ Reload / إعادة تحميل]
+echo ================================================================
+echo.
+timeout /t 5 > nul
 exit /b 0
