@@ -2392,7 +2392,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 1. Check official GitHub Releases API (releases/latest)
       try {
-        const relRes = await fetch('https://api.github.com/repos/KillD00zer/certi_processing_tools/releases/latest', { cache: 'no-store' });
+        const relRes = await fetch('https://api.github.com/repos/KillD00zer/certi_changes_overtime/releases/latest', { cache: 'no-store' });
         if (relRes.ok) {
           const relData = await relRes.json();
           if (relData && relData.tag_name) {
@@ -2410,7 +2410,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 2. Check raw manifest.json on main branch in certi_changes_overtime/extension
       try {
-        const manifestUrl = `https://raw.githubusercontent.com/KillD00zer/certi_processing_tools/main/certi_changes_overtime/extension/manifest.json?t=${Date.now()}`;
+        const manifestUrl = `https://raw.githubusercontent.com/KillD00zer/certi_changes_overtime/main/extension/manifest.json?t=${Date.now()}`;
         const mRes = await fetch(manifestUrl, { cache: 'no-store' });
         if (mRes.ok) {
           const mData = await mRes.json();
@@ -2428,7 +2428,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 3. Check latest commit date as informative fallback
       try {
-        const cRes = await fetch('https://api.github.com/repos/KillD00zer/certi_processing_tools/commits/main', { cache: 'no-store' });
+        const cRes = await fetch('https://api.github.com/repos/KillD00zer/certi_changes_overtime/commits/main', { cache: 'no-store' });
         if (cRes.ok) {
           const cData = await cRes.json();
           if (cData && cData.commit) {
@@ -2529,7 +2529,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnDownloadUpdaterBat) {
     btnDownloadUpdaterBat.addEventListener('click', () => {
-      const batContent = `@echo off\r\nchcp 65001 >nul\r\ntitle تحديث منظومة المتغيرات المكانية\r\necho جاري تنزيل آخر تحديث من GitHub...\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "$zip = Join-Path $env:TEMP 'ext.zip'; $ext = Join-Path $env:TEMP 'ext_unpacked'; Invoke-WebRequest 'https://github.com/KillD00zer/certi_processing_tools/archive/refs/heads/main.zip' -OutFile $zip; Expand-Archive $zip -DestinationPath $ext -Force; $sub = Get-ChildItem $ext | Select-Object -First 1; $src = Join-Path $sub.FullName 'extension'; if(Test-Path $src){ Copy-Item -Path \\"$src\\\\*\\" -Destination '%~dp0extension' -Recurse -Force } else { Copy-Item -Path \\"$($sub.FullName)\\\\*\\" -Destination '%~dp0' -Recurse -Force }; Remove-Item $ext -Recurse -Force; Remove-Item $zip -Force; Write-Host 'تم التحديث بنجاح!' -ForegroundColor Green;"\r\necho.\r\necho تم التحديث بنجاح! يمكنك الآن الضغط على زر [ريلود للإضافة] في الشريط الجانبي.\r\npause\r\n`;
+      const batContent = `@echo off\r\nchcp 65001 >nul\r\ntitle تحديث منظومة المتغيرات المكانية\r\necho جاري تنزيل آخر تحديث من GitHub...\r\npowershell -NoProfile -ExecutionPolicy Bypass -Command "$zip = Join-Path $env:TEMP 'ext.zip'; $ext = Join-Path $env:TEMP 'ext_unpacked'; Invoke-WebRequest 'https://github.com/KillD00zer/certi_changes_overtime/archive/refs/heads/main.zip' -OutFile $zip; Expand-Archive $zip -DestinationPath $ext -Force; $sub = Get-ChildItem $ext | Select-Object -First 1; $src = Join-Path $sub.FullName 'extension'; if(Test-Path $src){ Copy-Item -Path \\"$src\\\\*\\" -Destination '%~dp0extension' -Recurse -Force } else { Copy-Item -Path \\"$($sub.FullName)\\\\*\\" -Destination '%~dp0' -Recurse -Force }; Remove-Item $ext -Recurse -Force; Remove-Item $zip -Force; Write-Host 'تم التحديث بنجاح!' -ForegroundColor Green;"\r\necho.\r\necho تم التحديث بنجاح! يمكنك الآن الضغط على زر [ريلود للإضافة] في الشريط الجانبي.\r\npause\r\n`;
       const blob = new Blob([batContent], { type: 'text/plain;charset=utf-8' });
       saveAs(blob, 'تحديث_المنظومة.bat');
       showToast('📥 تم تنزيل ملف تحديث_المنظومة.bat');

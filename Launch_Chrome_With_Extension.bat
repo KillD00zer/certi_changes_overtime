@@ -1,7 +1,10 @@
 @echo off
-chcp 65001 >nul
+setlocal EnableExtensions
+chcp 65001 > nul
 title تشغيل إضافة Google Earth Survey للمتغيرات المكانية
 color 0B
+cls
+cd /d "%~dp0"
 
 echo ================================================================
 echo    GOOGLE EARTH CADASTRAL SURVEY EXTENSION (DUDC)
@@ -9,25 +12,28 @@ echo    منظومة رصد المتغيرات المكانية - إضافة Goo
 echo ================================================================
 echo.
 
-set EXT_PATH=%~dp0extension
+set "EXT_PATH=%~dp0extension"
 
-:: Detect Chrome Executable
-set CHROME_BIN=
+:: البحث عن متصفح Chrome أو Edge المثبت على النظام
+set "BROWSER_BIN="
 if exist "C:\Program Files\Google\Chrome\Application\chrome.exe" (
-    set CHROME_BIN="C:\Program Files\Google\Chrome\Application\chrome.exe"
+    set "BROWSER_BIN=C:\Program Files\Google\Chrome\Application\chrome.exe"
 ) else if exist "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" (
-    set CHROME_BIN="C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+    set "BROWSER_BIN=C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
 ) else if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" (
-    set CHROME_BIN="%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
+    set "BROWSER_BIN=%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
 ) else if exist "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" (
-    set CHROME_BIN="C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+    set "BROWSER_BIN=C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+) else if exist "C:\Program Files\Microsoft\Edge\Application\msedge.exe" (
+    set "BROWSER_BIN=C:\Program Files\Microsoft\Edge\Application\msedge.exe"
 )
 
-if "%CHROME_BIN%"=="" (
-    echo [!] لم يتم العثور على مسار Chrome أو Edge التلقائي.
-    echo يمكنك تثبيت الإضافة يدوياً من مسار:
+if "%BROWSER_BIN%"=="" (
+    echo [!] لم يتم العثور على متصفح Chrome أو Edge تلقائياً.
+    echo يمكنك تثبيت وتفعيل الإضافة يدوياً من المسار:
     echo %EXT_PATH%
     echo عبر فتح chrome://extensions وتفعيل Developer Mode ثم Load Unpacked.
+    echo.
     pause
     exit /b 1
 )
@@ -36,7 +42,9 @@ echo [*] جاري تشغيل المتصفح وتحميل الإضافة تلقا
 echo [*] مسار الإضافة: %EXT_PATH%
 echo.
 
-start "" %CHROME_BIN% --load-extension="%EXT_PATH%" "https://earth.google.com/web"
+start "" "%BROWSER_BIN%" --load-extension="%EXT_PATH%" "https://earth.google.com/web"
 
-echo [OK] تم تشغيل المتصفح. يمكنك الآن الضغط على أيقونة الإضافة في شريط الأدوات العلوي!
-timeout /t 5 >nul
+echo [OK] تم تشغيل المتصفح بنجاح!
+echo يمكنك الآن النقر على أيقونة الإضافة في شريط الأدوات العلوي أو الجانبي.
+timeout /t 4 > nul
+exit /b 0

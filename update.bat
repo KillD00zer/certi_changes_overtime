@@ -1,2 +1,2 @@
 @echo off
-call "%~dp0تحديث_المنظومة.bat"
+call "%~dp0Update_Extension.bat"
