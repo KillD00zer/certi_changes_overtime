@@ -1,14 +1,14 @@
 @echo off
 setlocal EnableExtensions
 chcp 65001 > nul
-title تشغيل إضافة Google Earth Survey للمتغيرات المكانية
+title تشغيل إضافة Google Earth Survey والمتغيرات المكانية
 color 0B
 cls
 cd /d "%~dp0"
 
 echo ================================================================
 echo    GOOGLE EARTH CADASTRAL SURVEY EXTENSION (DUDC)
-echo    منظومة رصد المتغيرات المكانية - إضافة Google Earth Web
+echo    منظومة الرفع المساحي والمتغيرات المكانية - إضافة Google Earth Web
 echo ================================================================
 echo.
 
@@ -41,8 +41,7 @@ if "%BROWSER_BIN%"=="" (
 
 echo [*] المتصفح المكتشف: %BROWSER_BIN%
 echo [*] مسار الإضافة: %EXT_PATH%
-echo [*] جاري تشغيل المتصفح وتحميل الإضافة تلقائياً...
-echo.
+echo [*] جاري تشغيل خدمة التحديث التلقائي بالخلفية...
 
 :: تشغيل خدمة التحديث المباشر التلقائي بالخلفية لدعم زر التحديث داخل الإضافة (Detached Daemon)
 where pythonw >nul 2>&1
@@ -55,15 +54,18 @@ if %ERRORLEVEL% equ 0 (
     )
 )
 
+echo [*] جاري إطلاق المتصفح وتحميل الإضافة تلقائياً...
+echo.
+
 :: استخدام بروفايل مخصص لضمان تحميل الإضافة حتى لو كان المتصفح مفتوحاً مسبقاً
 start "" "%BROWSER_BIN%" --user-data-dir="%USER_DATA%" --load-extension="%EXT_PATH%" --no-first-run --no-default-browser-check "https://earth.google.com/web"
 
 echo ================================================================
 echo [OK] تم إطلاق المتصفح وتحميل الإضافة بنجاح!
 echo.
-echo 💡 ملحوظة هامة:
+echo 💡 ملاحظة هامة:
 echo    إذا كان المتصفح مفتوحاً من قبل والإضافة مثبتة لديك:
-echo    ادخل على edge://extensions أو chrome://extensions واضغط [↻ Reload / إعادة تحميل]
+echo    ادخل على edge://extensions أو chrome://extensions واضغط [🔄 Reload / إعادة تحميل]
 echo ================================================================
 echo.
 timeout /t 5 > nul
