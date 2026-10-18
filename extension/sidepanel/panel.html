@@ -1,21 +1,26 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>منظومة رصد المتغيرات المكانية - Google Earth</title>
   <link rel="stylesheet" href="panel.css">
-  
+
   <!-- Standalone Bundled Libraries (Offline Capable) -->
   <script src="../libs/proj4.js"></script>
   <script src="../libs/xlsx.full.min.js"></script>
   <script src="../libs/jszip.min.js"></script>
+  <script src="../libs/docx.umd.js"></script>
   <script src="../libs/FileSaver.min.js"></script>
-  
+  <script src="../libs/pdf.min.js"></script>
+
   <!-- Geo Engine, Template Assets & Docx Builder -->
   <script src="../scripts/geo_engine.js"></script>
   <script src="../scripts/template_assets.js"></script>
+  <script src="../scripts/docx_builder.js"></script>
 </head>
+
 <body>
 
   <!-- Top App Header -->
@@ -49,7 +54,8 @@
           <h2>1. بيانات المعاملة والرفع المساحي</h2>
         </div>
         <div style="display: flex; gap: 6px; align-items: center;">
-          <button id="btn-import-project" class="btn btn-xs btn-outline-cyan" type="button" title="استيراد ملف مشروع سابق (JSON) بكافة بياناته وصوره وتعديله فوراً">
+          <button id="btn-import-project" class="btn btn-xs btn-outline-cyan" type="button"
+            title="استيراد ملف مشروع سابق (JSON) بكافة بياناته وصوره وتعديله فوراً">
             📂 استيراد مشروع (JSON)
           </button>
           <input type="file" id="input-cert-project" accept=".json,.certi" style="display: none;">
@@ -81,10 +87,12 @@
         <!-- Quick Samples -->
         <div class="samples-bar">
           <span class="samples-label">⚡ عينات للتجربة:</span>
-          <button id="btn-sample-ghazal" class="chip chip-sample" title="تحميل عينة WGS84 لجمال غزال بالمطرية" type="button">
+          <button id="btn-sample-ghazal" class="chip chip-sample" title="تحميل عينة WGS84 لجمال غزال بالمطرية"
+            type="button">
             جمال غزال (WGS84)
           </button>
-          <button id="btn-sample-tanakh" class="chip chip-sample" title="تحميل عينة الحزام الأحمر لطناح بالمنصورة" type="button">
+          <button id="btn-sample-tanakh" class="chip chip-sample" title="تحميل عينة الحزام الأحمر لطناح بالمنصورة"
+            type="button">
             طناح (Red Belt)
           </button>
         </div>
@@ -168,16 +176,19 @@
             <span id="points-count-badge" class="badge-count">4 نقاط</span>
           </div>
           <div class="points-actions-inline">
-            <button id="btn-swap-coords" class="btn btn-sm btn-outline-cyan" type="button" title="تبديل قيم خط الطول والعرض لكافة النقاط (Swap X ⇄ Y)">
+            <button id="btn-swap-coords" class="btn btn-sm btn-outline-cyan" type="button"
+              title="تبديل قيم خط الطول والعرض لكافة النقاط (Swap X ⇄ Y)">
               🔄 تبديل (Swap X ⇄ Y)
             </button>
-            <button id="btn-toggle-dms" class="btn btn-sm btn-outline-cyan" type="button" title="محول الإحداثيات من درجات ودقائق وثواني (DMS) إلى درجات عشرية (DD)">
+            <button id="btn-toggle-dms" class="btn btn-sm btn-outline-cyan" type="button"
+              title="محول الإحداثيات من درجات ودقائق وثواني (DMS) إلى درجات عشرية (DD)">
               📐 محول DMS ➔ DD
             </button>
             <button id="btn-add-point-row" class="btn btn-sm btn-secondary" type="button" title="إضافة صف ركن جديد">
               ➕ إضافة ركن
             </button>
-            <button id="btn-toggle-paste" class="btn btn-sm btn-secondary" type="button" title="لصق جدول إحداثيات دفع واحدة">
+            <button id="btn-toggle-paste" class="btn btn-sm btn-secondary" type="button"
+              title="لصق جدول إحداثيات دفع واحدة">
               📋 لصق جدول
             </button>
             <button id="btn-clear-points" class="btn btn-sm btn-danger-outline" type="button" title="مسح كافة الأركان">
@@ -192,24 +203,28 @@
             <span class="dms-box-title">📐 محول الإحداثيات (درجات ودقائق وثواني DMS ➔ درجات عشرية DD)</span>
             <button type="button" id="btn-close-dms" class="btn-close-box" title="إغلاق">✕</button>
           </div>
-          <p class="dms-hint">اكتب الدرجات والدقائق والثواني مفصولة بمسافة (مثال: <code>31 20 51.5</code> أو <code>30 43 11 2</code>):</p>
-          
+          <p class="dms-hint">اكتب الدرجات والدقائق والثواني مفصولة بمسافة (مثال: <code>31 20 51.5</code> أو
+            <code>30 43 11 2</code>):
+          </p>
+
           <div class="dms-grid">
             <div class="dms-col">
               <label for="inp-dms-lng">خط الطول / X (شرق) - DMS</label>
               <div class="dms-input-row">
                 <input type="text" id="inp-dms-lng" class="inp-mono" placeholder="31 20 51.5 أو 31 20 51 5">
                 <span class="dms-arrow">➔</span>
-                <input type="text" id="out-dd-lng" class="inp-mono out-dd" readonly placeholder="31.347639" title="القيمة المحولة (DD)">
+                <input type="text" id="out-dd-lng" class="inp-mono out-dd" readonly placeholder="31.347639"
+                  title="القيمة المحولة (DD)">
               </div>
             </div>
-            
+
             <div class="dms-col">
               <label for="inp-dms-lat">خط العرض / Y (شمال) - DMS</label>
               <div class="dms-input-row">
                 <input type="text" id="inp-dms-lat" class="inp-mono" placeholder="30 43 11.2 أو 30 43 11 2">
                 <span class="dms-arrow">➔</span>
-                <input type="text" id="out-dd-lat" class="inp-mono out-dd" readonly placeholder="30.719778" title="القيمة المحولة (DD)">
+                <input type="text" id="out-dd-lat" class="inp-mono out-dd" readonly placeholder="30.719778"
+                  title="القيمة المحولة (DD)">
               </div>
             </div>
           </div>
@@ -230,7 +245,8 @@
         <!-- Expandable Quick Paste Box -->
         <div id="box-paste-coords" class="paste-coords-box" style="display: none;">
           <label for="txt-paste-coords">الصق الإحداثيات هنا (سطر لكل نقطة: X ثم Y مفصولين بمسافة أو Tab):</label>
-          <textarea id="txt-paste-coords" rows="4" placeholder="31.302407  30.985227&#10;31.302518  30.985164&#10;31.302503  30.985140&#10;31.302392  30.985202"></textarea>
+          <textarea id="txt-paste-coords" rows="4"
+            placeholder="31.302407  30.985227&#10;31.302518  30.985164&#10;31.302503  30.985140&#10;31.302392  30.985202"></textarea>
           <button id="btn-apply-paste" class="btn btn-sm btn-primary" type="button">
             ✅ تطبيق وتحويل الإحداثيات
           </button>
@@ -256,10 +272,12 @@
 
         <!-- Manual Actions: Export CSV & Connect -->
         <div class="manual-action-bar">
-          <button id="btn-export-csv-manual" class="btn btn-secondary" type="button" title="تصدير ملف CSV مطابق لنموذج Polygon_1.csv">
+          <button id="btn-export-csv-manual" class="btn btn-secondary" type="button"
+            title="تصدير ملف CSV مطابق لنموذج Polygon_1.csv">
             <span>💾 تصدير ملف Polygon.csv</span>
           </button>
-          <button id="btn-connect-manual" class="btn btn-primary btn-glow" type="button" title="ربط البيانات بالمنظومة والتحليق في Google Earth">
+          <button id="btn-connect-manual" class="btn btn-primary btn-glow" type="button"
+            title="ربط البيانات بالمنظومة والتحليق في Google Earth">
             <span>🔗 ربط بالمنظومة (Connect & Fly)</span>
           </button>
         </div>
@@ -301,7 +319,8 @@
             <span class="centroid-label">إحداثيات مركز الثقل (Centroid)</span>
             <span id="centroid-status-badge" class="badge-subtle">محسوب تلقائياً</span>
           </div>
-          <button id="btn-recalc-centroid" class="btn btn-xs btn-secondary" type="button" title="إعادة الحساب التلقائي لمركز الثقل من الأركان">
+          <button id="btn-recalc-centroid" class="btn btn-xs btn-secondary" type="button"
+            title="إعادة الحساب التلقائي لمركز الثقل من الأركان">
             ↺ إعادة حساب
           </button>
         </div>
@@ -315,14 +334,16 @@
             <input type="text" id="inp-centroid-lat" class="inp-mono text-center" placeholder="30.xxxxxx">
           </div>
         </div>
-        <p class="centroid-note">💡 يتم حفظ هذه الإحداثيات وإظهار علامة المركز المحددة في الشهادة الرسمية ولقطات القمر الصناعي بدقة.</p>
+        <p class="centroid-note">💡 يتم حفظ هذه الإحداثيات وإظهار علامة المركز المحددة في الشهادة الرسمية ولقطات القمر
+          الصناعي بدقة.</p>
       </div>
 
       <!-- Overlay Display Mode Selector -->
       <div class="overlay-mode-box">
         <span class="overlay-mode-label">نمط الرسم على الخريطة:</span>
         <div class="overlay-mode-toggle">
-          <button id="btn-mode-poly" class="btn-mode active" type="button" title="عرض حدود المضلع الأحمر مع أرقام الأركان وعلامة المركز">
+          <button id="btn-mode-poly" class="btn-mode active" type="button"
+            title="عرض حدود المضلع الأحمر مع أرقام الأركان وعلامة المركز">
             <span>🟦 مضلع كامل</span>
           </button>
           <button id="btn-mode-point" class="btn-mode" type="button" title="عرض نقطة المركز فقط مع اسم المواطن">
@@ -350,12 +371,18 @@
             <div class="color-picker-row">
               <input type="color" id="inp-pin-color" value="#fbbf24" class="inp-color-picker" title="اختر أي لون مخصص">
               <div class="color-presets">
-                <button type="button" class="color-chip active" data-color="#fbbf24" style="background:#fbbf24;" title="أصفر ذهبي"></button>
-                <button type="button" class="color-chip" data-color="#ffffff" style="background:#ffffff;" title="أبيض"></button>
-                <button type="button" class="color-chip" data-color="#38bdf8" style="background:#38bdf8;" title="سماوي"></button>
-                <button type="button" class="color-chip" data-color="#22c55e" style="background:#22c55e;" title="أخضر"></button>
-                <button type="button" class="color-chip" data-color="#ef4444" style="background:#ef4444;" title="أحمر"></button>
-                <button type="button" class="color-chip" data-color="#f97316" style="background:#f97316;" title="برتقالي"></button>
+                <button type="button" class="color-chip active" data-color="#fbbf24" style="background:#fbbf24;"
+                  title="أصفر ذهبي"></button>
+                <button type="button" class="color-chip" data-color="#ffffff" style="background:#ffffff;"
+                  title="أبيض"></button>
+                <button type="button" class="color-chip" data-color="#38bdf8" style="background:#38bdf8;"
+                  title="سماوي"></button>
+                <button type="button" class="color-chip" data-color="#22c55e" style="background:#22c55e;"
+                  title="أخضر"></button>
+                <button type="button" class="color-chip" data-color="#ef4444" style="background:#ef4444;"
+                  title="أحمر"></button>
+                <button type="button" class="color-chip" data-color="#f97316" style="background:#f97316;"
+                  title="برتقالي"></button>
               </div>
             </div>
           </div>
@@ -397,9 +424,10 @@
         <button id="btn-fly-earth" class="btn btn-primary btn-glow full-span" type="button">
           <span>🌍 فتح والانتقال في Google Earth</span>
         </button>
-        <button id="btn-toggle-lock" class="btn btn-secondary full-span" type="button" title="تبديل وضع الرسم بين مُثبَّت وقابل للتعديل (يطبق على المضلع والدبوس)">
+        <button id="btn-toggle-lock" class="btn btn-secondary full-span" type="button"
+          title="قفل أو فك قفل تحريك الرسم لمطابقة زاوية التصوير">
           <span id="lock-btn-icon">🔒</span>
-          <span id="lock-btn-label">وضع الرسم: مُثبَّت</span>
+          <span id="lock-btn-label">تثبيت موضع الرسم (مقفل)</span>
         </button>
         <button id="btn-center-camera" class="btn btn-secondary" type="button">
           <span>🎯 توسيط الكاميرا</span>
@@ -421,7 +449,8 @@
       </div>
 
       <p class="guide-text">
-        قم بتمكين <strong>الصور التاريخية (Historical Imagery)</strong> داخل Google Earth Web، واختر السنة والشهر، ثم التقط الصورة بدقة كاملة:
+        قم بتمكين <strong>الصور التاريخية (Historical Imagery)</strong> داخل Google Earth Web، واختر السنة والشهر، ثم
+        التقط الصورة بدقة كاملة:
       </p>
 
       <!-- Limit Indicator Badge -->
@@ -514,8 +543,9 @@
           <button id="btn-capture-shot" class="btn btn-danger full-width btn-glow-red" type="button">
             <span>📸 التقاط لقطة القمر الصناعي الآن وتوثيقها</span>
           </button>
-          
-          <button id="btn-upload-local-image" class="btn btn-secondary full-width" type="button" title="إضافة صورة فضائية أو لقطة من جهاز الكمبيوتر مباشرة">
+
+          <button id="btn-upload-local-image" class="btn btn-secondary full-width" type="button"
+            title="إضافة صورة فضائية أو لقطة من جهاز الكمبيوتر مباشرة">
             <span>📁 إضافة صورة فضائية من الجهاز</span>
           </button>
           <input type="file" id="input-local-image" accept="image/*" style="display: none;">
@@ -557,7 +587,7 @@
           <input type="text" id="inp-surveyor" value="مسؤول المتغيرات المكانية">
         </div>
         <div class="form-group">
-          <label for="inp-director">مدير وحدة البنية المعلوماتية المكانية</label>
+          <label for="inp-director">مدير وحدة المتغيرات المكانية</label>
           <input type="text" id="inp-director" value="مروة محمد رضوان">
         </div>
         <div class="form-group full-width">
@@ -566,66 +596,71 @@
         </div>
       </div>
 
-      <button id="btn-preview-pdf" class="btn btn-primary full-width" type="button" style="margin-bottom: 8px; padding: 12px; font-size: 13.5px; background: linear-gradient(135deg, #0284c7, #0369a1); font-weight: 800;">
+      <button id="btn-preview-pdf" class="btn btn-primary full-width" type="button"
+        style="margin-bottom: 8px; padding: 12px; font-size: 13.5px; background: linear-gradient(135deg, #0284c7, #0369a1); font-weight: 800;">
         <span>👁️ معاينة وطباعة بيان التسلسل الزمني (PDF)</span>
       </button>
 
-      <button id="btn-export-citizen-package" class="btn btn-success full-width btn-glow-green" type="button" style="padding: 10px; font-size: 13px; font-weight: 700;">
-        <span>📦 تصدير حزمة المواطن المتكاملة (JSON + CSV + الصور الأصلية)</span>
+      <button id="btn-generate-docx" class="btn btn-success full-width btn-glow-green" type="button"
+        style="opacity: 0.85;">
+        <span>📄 تنزيل حزمة Word (.docx) و (.csv)</span>
       </button>
     </section>
 
   </main>
 
-  <!-- Modal: System Update Dialog (DUDC Style Clean UI) -->
+  <!-- Modal: System Update & Reset Dialog -->
   <div id="modal-update-dialog" class="update-modal-backdrop" style="display: none;">
     <div class="update-modal-box">
       <div class="update-modal-header">
-        <div class="update-modal-title" style="display: flex; align-items: center; gap: 8px;">
-          <span>🔄</span>
-          <span style="font-weight: 800; font-size: 15px; color: #38bdf8;">فحص وتحديث المنظومة (GitHub)</span>
-          <span id="update-modal-badge" class="badge-subtle" style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8;">جارٍ الفحص...</span>
+        <div class="update-modal-title">
+          <span>🔄 فحص التحديثات وإعادة تشغيل الإضافة</span>
         </div>
         <button type="button" id="btn-close-update-modal" class="btn-close-modal" title="إغلاق">✕</button>
       </div>
-
       <div class="update-modal-body">
-        <!-- Version Info Bar -->
-        <div class="update-version-row" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 12px;">
-          <div>
-            <span style="color: #94a3b8;">الإصدار المثبت:</span>
-            <strong class="version-val current-val" id="lbl-curr-version" style="font-family: monospace; color: #f8fafc; margin-right: 4px;">v3.0.0</strong>
+        <div class="update-version-row">
+          <div class="version-item">
+            <span class="version-label">الإصدار الحالي المثبت:</span>
+            <span class="version-val current-val" id="lbl-curr-version">v3.0.0</span>
           </div>
-          <div>
-            <span style="color: #94a3b8;">أحدث إصدار (GitHub):</span>
-            <strong class="version-val remote-val" id="lbl-remote-version" style="font-family: monospace; color: #38bdf8; margin-right: 4px;">جاري الفحص...</strong>
+          <div class="version-item">
+            <span class="version-label">أحدث إصدار متاح (Release):</span>
+            <span class="version-val remote-val" id="lbl-remote-version">جاري الفحص...</span>
           </div>
-          <button type="button" id="btn-recheck-update" class="btn btn-xs btn-outline-cyan" style="padding: 3px 8px; font-size: 11px;">
-            🔄 إعادة الفحص
-          </button>
         </div>
 
-        <div id="update-release-meta" class="update-release-meta" style="display: none; font-size: 11px; color: #cbd5e1; margin-bottom: 8px;">
-          <span id="lbl-release-tag" class="release-tag-pill" style="background: rgba(56, 189, 248, 0.15); color: #bae6fd; padding: 2px 6px; border-radius: 4px; font-family: monospace;"></span>
-          <span id="lbl-release-date" class="release-date" style="margin-right: 8px; color: #94a3b8;"></span>
+        <div id="update-release-meta" class="update-release-meta" style="display: none;">
+          <span id="lbl-release-tag" class="release-tag-pill"></span>
+          <span id="lbl-release-date" class="release-date"></span>
         </div>
 
-        <!-- Dynamic Status Alert Box -->
-        <div id="update-status-msg" class="update-status-alert info" style="padding: 12px; border-radius: 8px; font-size: 12.5px; line-height: 1.6; margin-bottom: 10px;">
-          <span>🔍 جارٍ الاتصال بمستودع GitHub للتحقق من وجود تحديثات جديدة...</span>
+        <div id="update-status-msg" class="update-status-alert info">
+          <span>🔍 جاري الاتصال بمستودع GitHub للتحقق من وجود تحديثات جديدة...</span>
         </div>
 
-        <!-- Incoming Commits / Release Notes Container -->
-        <div id="update-commits-container" style="display: none; max-height: 160px; overflow-y: auto; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 8px; margin-bottom: 12px; font-size: 11.5px; line-height: 1.5; color: #cbd5e1;">
-        </div>
+        <div class="update-actions-list">
+          <!-- Action 1: Instant Reload Extension -->
+          <div class="update-action-card">
+            <div class="action-info">
+              <strong>↻ إعادة تعيين وتحميل الإضافة (Reset & Reload)</strong>
+              <p>تفريغ ذاكرة الإضافة بالكامل وتحميل الكود المحدث فوراً دون الحاجة لإعادة فتح المتصفح.</p>
+            </div>
+            <button type="button" id="btn-reload-extension" class="btn btn-sm btn-primary">
+              ↻ ريلود للإضافة
+            </button>
+          </div>
 
-        <!-- Action Footer -->
-        <div class="update-modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 12px; margin-top: 8px;">
-          <span style="font-size: 11px; color: #64748b;">مستودع رسمي: KillD00zer/certi_changes_overtime</span>
-          <div style="display: flex; gap: 8px;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-dismiss-update-modal" style="padding: 6px 12px; font-size: 12px;">إغلاق</button>
-            <button type="button" class="btn btn-primary btn-sm" id="btn-reload-extension" style="padding: 6px 16px; font-size: 12px; font-weight: 800; background: linear-gradient(135deg, #0284c7, #0369a1);">
-              🚀 سحب وتطبيق التحديث (Pull & Reload)
+          <!-- Action 2: Run Update Script -->
+          <div class="update-action-card">
+            <div class="action-info">
+              <strong>⚡ تنزيل وتثبيت أحدث كود من GitHub</strong>
+              <p>شغّل ملف <code style="color:#38bdf8; font-weight: bold;">تحديث_المنظومة.bat</code> الموجود بمجلد
+                البرنامج لاستبدال الملفات تلقائياً بآخر تحديث.</p>
+            </div>
+            <button type="button" id="btn-download-updater-bat" class="btn btn-sm btn-secondary"
+              title="تنزيل سكربت التحديث المباشر">
+              📥 تنزيل ملف التحديث (.bat)
             </button>
           </div>
         </div>
@@ -639,4 +674,5 @@
   <!-- Panel Script -->
   <script src="panel.js"></script>
 </body>
+
 </html>
