@@ -377,8 +377,9 @@
 
       const centerGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       centerGroup.setAttribute('class', 'earth-center-point-marker');
-      centerGroup.setAttribute('title', `📍 موقع المعاملة (اسحب بالفأرة لتعديل الموضع): ${Number(cLon).toFixed(6)}, ${Number(cLat).toFixed(6)}`);
-      centerGroup.style.cursor = 'grab';
+      centerGroup.setAttribute('title', isOverlayLocked ? `📍 موقع المعاملة (مُثبَّت): ${Number(cLon).toFixed(6)}, ${Number(cLat).toFixed(6)}` : `📍 موقع المعاملة (قابل للتعديل - اسحب بالفأرة لتعديل الموضع): ${Number(cLon).toFixed(6)}, ${Number(cLat).toFixed(6)}`);
+      centerGroup.style.pointerEvents = isOverlayLocked ? 'none' : 'auto';
+      centerGroup.style.cursor = isOverlayLocked ? 'default' : 'grab';
 
       // Hit area
       const cHitArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -386,6 +387,7 @@
       cHitArea.setAttribute('cy', ptY);
       cHitArea.setAttribute('r', '24');
       cHitArea.setAttribute('fill', 'transparent');
+      cHitArea.style.cursor = isOverlayLocked ? 'default' : 'grab';
       centerGroup.appendChild(cHitArea);
 
       // 1. Radar Glowing Target Ring (Red / Rose for Location Pin)
@@ -565,17 +567,17 @@
         const centroidPin = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         centroidPin.setAttribute('id', 'earth-survey-centroid-pin');
         centroidPin.setAttribute('class', 'earth-survey-centroid-pin');
-        centroidPin.setAttribute('title', `📐 سنترويد المضلع الهندسي (اسحب بالفأرة لتعديل الموضع): ${Number(polyCLon).toFixed(6)}, ${Number(polyCLat).toFixed(6)}`);
-        centroidPin.style.pointerEvents = 'auto';
-        centroidPin.style.cursor = 'grab';
+        centroidPin.setAttribute('title', isOverlayLocked ? `📐 سنترويد المضلع الهندسي (مُثبَّت): ${Number(polyCLon).toFixed(6)}, ${Number(polyCLat).toFixed(6)}` : `📐 سنترويد المضلع الهندسي (قابل للتعديل - اسحب بالفأرة لتعديل الموضع): ${Number(polyCLon).toFixed(6)}, ${Number(polyCLat).toFixed(6)}`);
+        centroidPin.style.pointerEvents = isOverlayLocked ? 'none' : 'auto';
+        centroidPin.style.cursor = isOverlayLocked ? 'default' : 'grab';
 
-        // Invisible generous circular hit area for effortless mouse grabbing
+        // Invisible generous circular hit area for mouse grabbing
         const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         hitArea.setAttribute('cx', cPx);
         hitArea.setAttribute('cy', cPy);
         hitArea.setAttribute('r', '24');
         hitArea.setAttribute('fill', 'transparent');
-        hitArea.style.cursor = 'grab';
+        hitArea.style.cursor = isOverlayLocked ? 'default' : 'grab';
         centroidPin.appendChild(hitArea);
 
         const currentTextColor = pinTextColor || '#38bdf8';
@@ -691,6 +693,11 @@
 
   function setupCentroidDraggable(element, metersPerPixel, mPerDegLat, mPerDegLon) {
     if (!element || !currentParcel) return;
+    if (isOverlayLocked) {
+      element.style.pointerEvents = 'none';
+      element.style.cursor = 'default';
+      return;
+    }
     element.style.pointerEvents = 'auto';
     element.style.cursor = 'grab';
 
@@ -984,7 +991,7 @@
       isOverlayLocked = (typeof msg.locked === 'boolean') ? msg.locked : true;
       saveOverlayOffset();
       renderOverlay();
-      showToast(isOverlayLocked ? '🔒 تم قفل وتثبيت الرسم' : '🔓 تم فك قفل الرسم للتحريك');
+      showToast(isOverlayLocked ? '🔒 وضع الرسم: مُثبَّت (تم تأمين المضلع والدبوس)' : '🔓 وضع الرسم: قابل للتعديل (يمكن سحب المضلع أو الدبوس)');
       sendResponse({ success: true, isLocked: isOverlayLocked });
       return true;
     }
@@ -993,7 +1000,7 @@
       isOverlayLocked = !isOverlayLocked;
       saveOverlayOffset();
       renderOverlay();
-      showToast(isOverlayLocked ? '🔒 تم قفل وتثبيت الرسم' : '🔓 تم فك قفل الرسم للتحريك');
+      showToast(isOverlayLocked ? '🔒 وضع الرسم: مُثبَّت (تم تأمين المضلع والدبوس)' : '🔓 وضع الرسم: قابل للتعديل (يمكن سحب المضلع أو الدبوس)');
       sendResponse({ success: true, isLocked: isOverlayLocked });
       return true;
     }

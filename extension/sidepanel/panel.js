@@ -1465,14 +1465,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!btnToggleLock) return;
     if (locked) {
       if (lockBtnIcon) lockBtnIcon.textContent = '🔒';
-      if (lockBtnLabel) lockBtnLabel.textContent = 'تثبيت موضع الرسم (مقفل)';
-      btnToggleLock.style.borderColor = '';
-      btnToggleLock.style.background = '';
+      if (lockBtnLabel) lockBtnLabel.textContent = 'وضع الرسم: مُثبَّت';
+      btnToggleLock.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+      btnToggleLock.style.background = 'rgba(15, 23, 42, 0.6)';
+      btnToggleLock.title = 'الرسم مُثبَّت حالياً (محمي ضد تحريك المضلع أو الدبوس) - انقر لجعله قابلاً للتعديل';
     } else {
       if (lockBtnIcon) lockBtnIcon.textContent = '🔓';
-      if (lockBtnLabel) lockBtnLabel.textContent = 'تحريك وضبط الرسم (مفتوح بالسحب)';
+      if (lockBtnLabel) lockBtnLabel.textContent = 'وضع الرسم: قابل للتعديل';
       btnToggleLock.style.borderColor = '#38bdf8';
       btnToggleLock.style.background = 'rgba(2, 132, 199, 0.25)';
+      btnToggleLock.title = 'الرسم قابل للتعديل حالياً (يمكنك سحب المضلع أو الدبوس بالفأرة) - انقر للتثبيت';
     }
   }
 
@@ -1491,7 +1493,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }).catch(() => {});
         }
       });
-      showToast(isOverlayLocked ? '🔒 تم قفل وتثبيت موضع الرسم' : '🔓 تم فك القفل: يمكنك الآن سحب الرسم بالماوس أو الأسهم لمطابقة زاوية التصوير');
+      showToast(isOverlayLocked ? '🔒 وضع الرسم: مُثبَّت (تم تأمين المضلع والدبوس)' : '🔓 وضع الرسم: قابل للتعديل (يمكنك سحب المضلع أو الدبوس بالفأرة)');
     });
   }
 
