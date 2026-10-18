@@ -49,7 +49,10 @@ echo [2/3] الإصدار الحالي المثبت: [%LOCAL_HASH%]
 echo       أحدث إصدار على GitHub:  [%REMOTE_HASH%]
 echo.
 
-if "%LOCAL_HASH%"=="%REMOTE_HASH%" (
+set "INCOMING_COUNT=0"
+for /f %%a in ('git rev-list HEAD..origin/main --count') do set "INCOMING_COUNT=%%a"
+
+if "%INCOMING_COUNT%"=="0" (
     echo ======================================================================
     echo   المنظومة محدثة بالكامل! أنت تعمل على أحدث كود منشور.
     echo ======================================================================
@@ -58,7 +61,7 @@ if "%LOCAL_HASH%"=="%REMOTE_HASH%" (
 )
 
 echo ======================================================================
-echo   يتوفر تحديث جديد! سجل التعديلات المنشورة:
+echo   يتوفر %INCOMING_COUNT% تحديث جديد! سجل التعديلات المنشورة:
 echo ======================================================================
 echo.
 git log HEAD..origin/main --pretty=format:"* %s [%h] (%cr)"
