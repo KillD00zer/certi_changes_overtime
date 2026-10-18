@@ -2209,8 +2209,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const appVersionBadge = document.getElementById('app-version-badge');
 
   const currentLocalVersion = (chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest().version : '3.0.0';
-  if (lblCurrVersion) lblCurrVersion.textContent = `v${currentLocalVersion}`;
-  if (appVersionBadge) appVersionBadge.textContent = `v${currentLocalVersion}`;
+  let currentLocalCommit = '2584f01';
+
+  async function getLocalBuildInfo() {
+    try {
+      const res = await fetch(chrome.runtime.getURL('build_info.json'), { cache: 'no-store' });
+      if (res.ok) {
+        const info = await res.json();
+        if (info.commit) currentLocalCommit = info.commit.substring(0, 7);
+      }
+    } catch (e) {
+      if (chrome.storage && chrome.storage.local) {
+        const s = await new Promise(r => chrome.storage.local.get(['installedCommit'], r));
+        if (s && s.installedCommit) currentLocalCommit = s.installedCommit.substring(0, 7);
+      }
+    }
+    if (lblCurrVersion) lblCurrVersion.textContent = `v${currentLocalVersion} (${currentLocalCommit})`;
+    if (appVersionBadge) appVersionBadge.textContent = `v${currentLocalVersion}`;
+    return currentLocalCommit;
+  }
+
+  // Load build info immediately
+  getLocalBuildInfo();
 
   function compareVersions(v1, v2) {
     const p1 = String(v1).replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
@@ -2239,6 +2259,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateModalBadge = document.getElementById('update-modal-badge');
     const updateCommitsContainer = document.getElementById('update-commits-container');
 
+    await getLocalBuildInfo();
+
     if (!silent) {
       if (lblRemoteVersion) lblRemoteVersion.textContent = 'جارٍ الفحص...';
       if (updateReleaseMeta) updateReleaseMeta.style.display = 'none';
@@ -2261,50 +2283,14 @@ document.addEventListener('DOMContentLoaded', () => {
       let releaseDateStr = null;
       let incomingCommits = [];
 
-      // 1. Fetch latest release info
-      try {
-        const relRes = await fetch('https://api.github.com/repos/KillD00zer/certi_changes_overtime/releases/latest', { cache: 'no-store' });
-        if (relRes.ok) {
-          const relData = await relRes.json();
-          if (relData && relData.tag_name) {
-            releaseTitle = relData.name || relData.tag_name;
-            remoteVersion = relData.tag_name.trim().replace(/^v/i, '');
-            if (relData.published_at) {
-              const d = new Date(relData.published_at);
-              releaseDateStr = `تاريخ الإطلاق: ${d.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}`;
-            }
-          }
-        }
-      } catch (relErr) {
-        console.warn('[Update] Releases API warning:', relErr);
-      }
-
-      // 2. Fetch manifest.json from main branch
-      try {
-        const manifestUrl = `https://raw.githubusercontent.com/KillD00zer/certi_changes_overtime/main/extension/manifest.json?t=${Date.now()}`;
-        const mRes = await fetch(manifestUrl, { cache: 'no-store' });
-        if (mRes.ok) {
-          const mData = await mRes.json();
-          const manifestVer = (mData.version || '').trim();
-          if (manifestVer) {
-            if (!remoteVersion || compareVersions(manifestVer, remoteVersion) >= 0) {
-              remoteVersion = manifestVer;
-              if (!releaseTitle) releaseTitle = `Release v${manifestVer}`;
-            }
-          }
-        }
-      } catch (mErr) {
-        console.warn('[Update] Raw manifest warning:', mErr);
-      }
-
-      // 3. Fetch recent commits from GitHub main branch
+      // 1. Fetch recent commits from GitHub main branch
       try {
         const cRes = await fetch('https://api.github.com/repos/KillD00zer/certi_changes_overtime/commits?per_page=5', { cache: 'no-store' });
         if (cRes.ok) {
           const cData = await cRes.json();
           if (Array.isArray(cData)) {
             incomingCommits = cData;
-            if (!releaseDateStr && incomingCommits.length > 0 && incomingCommits[0].commit) {
+            if (incomingCommits.length > 0 && incomingCommits[0].commit) {
               const cDate = new Date(incomingCommits[0].commit.committer.date);
               const dateStr = cDate.toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' });
               const sha = incomingCommits[0].sha ? incomingCommits[0].sha.substring(0, 7) : '';
@@ -2316,15 +2302,28 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('[Update] Commits API warning:', cErr);
       }
 
-      if (!remoteVersion && incomingCommits.length > 0) {
-        remoteVersion = currentLocalVersion;
+      // 2. Fetch manifest.json from main branch
+      try {
+        const manifestUrl = `https://raw.githubusercontent.com/KillD00zer/certi_changes_overtime/main/extension/manifest.json?t=${Date.now()}`;
+        const mRes = await fetch(manifestUrl, { cache: 'no-store' });
+        if (mRes.ok) {
+          const mData = await mRes.json();
+          const manifestVer = (mData.version || '').trim();
+          if (manifestVer) {
+            remoteVersion = manifestVer;
+            releaseTitle = `v${manifestVer}`;
+          }
+        }
+      } catch (mErr) {
+        console.warn('[Update] Raw manifest warning:', mErr);
       }
 
+      const remoteCommitSha = (incomingCommits.length > 0 && incomingCommits[0].sha) ? incomingCommits[0].sha.substring(0, 7) : null;
       const cleanRemoteVer = remoteVersion ? (remoteVersion.startsWith('v') ? remoteVersion : `v${remoteVersion}`) : `v${currentLocalVersion}`;
       const cleanLocalVer = currentLocalVersion.startsWith('v') ? currentLocalVersion : `v${currentLocalVersion}`;
 
-      if (lblRemoteVersion) lblRemoteVersion.textContent = cleanRemoteVer;
-      if (lblCurrVersion) lblCurrVersion.textContent = cleanLocalVer;
+      if (lblRemoteVersion) lblRemoteVersion.textContent = remoteCommitSha ? `${cleanRemoteVer} (${remoteCommitSha})` : cleanRemoteVer;
+      if (lblCurrVersion) lblCurrVersion.textContent = `${cleanLocalVer} (${currentLocalCommit})`;
 
       if (updateReleaseMeta) {
         updateReleaseMeta.style.display = 'flex';
@@ -2332,30 +2331,32 @@ document.addEventListener('DOMContentLoaded', () => {
         if (lblReleaseDate) lblReleaseDate.textContent = releaseDateStr || '';
       }
 
-      // Compare versions
-      const cmp = remoteVersion ? compareVersions(remoteVersion, currentLocalVersion) : 0;
+      // Check update by Version OR by Commit Hash
+      const hasVersionBump = remoteVersion && compareVersions(remoteVersion, currentLocalVersion) > 0;
+      const hasNewCommit = remoteCommitSha && remoteCommitSha !== currentLocalCommit;
+      const isUpdateAvailable = hasVersionBump || hasNewCommit;
 
-      if (cmp > 0) {
-        // Newer version available!
+      if (isUpdateAvailable) {
+        // Newer version/commit available!
         if (btnCheckUpdate) {
           btnCheckUpdate.classList.add('has-update');
-          btnCheckUpdate.title = `🚀 يتوفر إصدار جديد (${cleanRemoteVer})! انقر هنا للتحديث`;
+          btnCheckUpdate.title = `🚀 يتوفر تحديث جديد (${remoteCommitSha || cleanRemoteVer})!`;
         }
-        if (lblRemoteVersion) lblRemoteVersion.style.color = '#34d399';
+        if (lblRemoteVersion) lblRemoteVersion.style.color = '#38bdf8';
         if (updateModalBadge) {
           updateModalBadge.textContent = 'يتوفر تحديث جديد 🚀';
-          updateModalBadge.style.color = '#34d399';
-          updateModalBadge.style.borderColor = '#34d399';
-          updateModalBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+          updateModalBadge.style.color = '#38bdf8';
+          updateModalBadge.style.borderColor = '#38bdf8';
+          updateModalBadge.style.background = 'rgba(56, 189, 248, 0.2)';
         }
         if (updateStatusMsg) {
           updateStatusMsg.className = 'update-status-alert warning';
-          updateStatusMsg.innerHTML = `<span>🚀 <strong>يتوفر إصدار أحدث للمنظومة على GitHub (${cleanRemoteVer})!</strong><br>الإصدار الحالي لديك هو (${cleanLocalVer}). انقر على زر <strong>سحب وتطبيق التحديث</strong> بالأسفل لتطبيق التحديث وتحديث الإضافة فوراً.</span>`;
+          updateStatusMsg.innerHTML = `<span>🚀 <strong>يتوفر كود جديد منشور على GitHub بانتظار السحب والتطبيق!</strong><br>الكوميت المثبت محلياً: <code>${currentLocalCommit}</code> ⬅️ أحدث كوميت على GitHub: <code>${remoteCommitSha || cleanRemoteVer}</code>.<br>انقر على زر <strong>سحب وتطبيق التحديث</strong> بالأسفل لتحديث المنظومة فوراً.</span>`;
         }
       } else {
         // Up to date!
         if (btnCheckUpdate) btnCheckUpdate.classList.remove('has-update');
-        if (lblRemoteVersion) lblRemoteVersion.style.color = '#38bdf8';
+        if (lblRemoteVersion) lblRemoteVersion.style.color = '#34d399';
         if (updateModalBadge) {
           updateModalBadge.textContent = 'محدث بالكامل ✔';
           updateModalBadge.style.color = '#34d399';
@@ -2364,11 +2365,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (updateStatusMsg) {
           updateStatusMsg.className = 'update-status-alert success';
-          updateStatusMsg.innerHTML = `<span>✅ <strong>المنظومة محدثة بالكامل لأحدث إصدار (${cleanLocalVer})!</strong> متطابق تماماً مع مستودع GitHub.</span>`;
+          updateStatusMsg.innerHTML = `<span>✅ <strong>المنظومة محدثة بالكامل لأحدث إصدار وكود منشور!</strong><br>أنت تعمل على أحدث كوميت رسمي (<code>${currentLocalCommit}</code>) ولا توجد أي تعديلات جديدة حالياً.</span>`;
         }
       }
 
-      // Render recent commit notes
+      // Render incoming commits list
       if (updateCommitsContainer && incomingCommits.length > 0) {
         updateCommitsContainer.style.display = 'flex';
         updateCommitsContainer.style.flexDirection = 'column';
@@ -2383,14 +2384,15 @@ document.addEventListener('DOMContentLoaded', () => {
           const subject = parts[0] || 'تحديث برمجي';
           const body = parts.slice(1).join('\n').trim();
           const sha = item.sha ? item.sha.substring(0, 7) : '';
+          const isCurrent = sha === currentLocalCommit;
           const dateStr = c.author && c.author.date ? new Date(c.author.date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
           const card = document.createElement('div');
-          card.style.cssText = 'background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 6px; padding: 6px 10px; font-size: 11px;';
+          card.style.cssText = `background: rgba(15, 23, 42, 0.6); border: 1px solid ${isCurrent ? '#34d399' : 'rgba(56, 189, 248, 0.25)'}; border-radius: 6px; padding: 6px 10px; font-size: 11px;`;
           card.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px;">
               <span style="font-weight: 700; color: #f8fafc;">⚡ ${escapeHtml(subject)}</span>
-              <span style="font-family: monospace; font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; padding: 1px 5px; border-radius: 3px;">${escapeHtml(sha)}</span>
+              <span style="font-family: monospace; font-size: 10px; background: ${isCurrent ? 'rgba(52, 211, 153, 0.2)' : 'rgba(56, 189, 248, 0.15)'}; color: ${isCurrent ? '#34d399' : '#38bdf8'}; padding: 1px 5px; border-radius: 3px;">${escapeHtml(sha)}${isCurrent ? ' (الحالي)' : ''}</span>
             </div>
             <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">
               <span>🕒 ${escapeHtml(dateStr)}</span>
@@ -2419,18 +2421,85 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (btnReloadExtension) {
-    btnReloadExtension.addEventListener('click', () => {
+    btnReloadExtension.addEventListener('click', async () => {
       btnReloadExtension.disabled = true;
-      btnReloadExtension.innerHTML = '⏳ جارٍ سحب التحديث وتنشيط الإضافة...';
-      showToast('🔄 جارٍ سحب التحديث وتنشيط الإضافة بالكامل...');
+      btnReloadExtension.innerHTML = '⏳ جارٍ الاتصال بمحرك التحديث وسحب الكود...';
+      showToast('🔄 جارٍ سحب التحديثات وتطبيقها...');
 
-      setTimeout(() => {
-        if (chrome.runtime && chrome.runtime.reload) {
-          chrome.runtime.reload();
-        } else {
-          window.location.reload();
+      let pullSuccess = false;
+      let newSha = null;
+
+      try {
+        const ctrl = new AbortController();
+        const timeoutId = setTimeout(() => ctrl.abort(), 12000);
+
+        const res = await fetch('http://127.0.0.1:8766/update', {
+          method: 'POST',
+          signal: ctrl.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success) {
+            pullSuccess = true;
+            newSha = data.commit;
+            if (newSha) {
+              currentLocalCommit = newSha;
+              if (chrome.storage && chrome.storage.local) {
+                chrome.storage.local.set({ installedCommit: newSha });
+              }
+            }
+          }
         }
-      }, 500);
+      } catch (netErr) {
+        console.warn('[Updater] Local service not reachable or timed out:', netErr);
+      }
+
+      if (pullSuccess) {
+        btnReloadExtension.innerHTML = `✅ تم التحديث بنجاح (${newSha})! جارٍ التنشيط...`;
+        btnReloadExtension.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        showToast(`🎉 تم سحب وتطبيق التحديث (${newSha}) بنجاح! جارٍ تنشيط الإضافة...`);
+
+        setTimeout(() => {
+          if (chrome.runtime && chrome.runtime.reload) {
+            chrome.runtime.reload();
+          }
+          setTimeout(() => {
+            window.location.reload();
+          }, 600);
+        }, 1000);
+      } else {
+        // Fallback: Local updater service wasn't running
+        btnReloadExtension.disabled = false;
+        btnReloadExtension.innerHTML = '🔄 إعادة تحميل وتنشيط الإضافة';
+        btnReloadExtension.style.background = 'linear-gradient(135deg, #0284c7, #0369a1)';
+
+        if (updateStatusMsg) {
+          updateStatusMsg.className = 'update-status-alert warning';
+          updateStatusMsg.innerHTML = `
+            <span>💡 <strong>لتطبيق التحديث على ملفات النظام تلقائياً:</strong><br>
+            شغّل ملف <code style="color:#38bdf8; font-weight: bold;">تحديث_المنظومة.bat</code> الموجود بمجلد البرنامج لسحب أحدث ملفات،<br>
+            ثم انقر على زر <strong>إعادة تحميل وتنشيط الإضافة</strong> بالأسفل.</span>
+          `;
+        }
+
+        showToast('💡 لسحب التحديث: شغّل تحديث_المنظومة.bat ثم اضغط إعادة التحميل');
+
+        btnReloadExtension.onclick = () => {
+          btnReloadExtension.disabled = true;
+          btnReloadExtension.innerHTML = '⏳ جارٍ إعادة التحميل...';
+          showToast('🔄 جارٍ إعادة تشغيل الإضافة وتفريغ الذاكرة...');
+          setTimeout(() => {
+            if (chrome.runtime && chrome.runtime.reload) {
+              chrome.runtime.reload();
+            }
+            setTimeout(() => {
+              window.location.reload();
+            }, 600);
+          }, 400);
+        };
+      }
     });
   }
 

@@ -44,6 +44,12 @@ echo [*] مسار الإضافة: %EXT_PATH%
 echo [*] جاري تشغيل المتصفح وتحميل الإضافة تلقائياً...
 echo.
 
+:: تشغيل خدمة التحديث المباشر التلقائي بالخلفية لدعم زر التحديث داخل الإضافة
+where python >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    start /b "" python "%~dp0updater_service.py" >nul 2>&1
+)
+
 :: استخدام بروفايل مخصص لضمان تحميل الإضافة حتى لو كان المتصفح مفتوحاً مسبقاً
 start "" "%BROWSER_BIN%" --user-data-dir="%USER_DATA%" --load-extension="%EXT_PATH%" --no-first-run --no-default-browser-check "https://earth.google.com/web"
 
