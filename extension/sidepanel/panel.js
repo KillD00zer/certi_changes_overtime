@@ -606,184 +606,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function handlePdfCertificateImport(file) {
-    try {
-      if (typeof pdfjsLib === 'undefined') {
-        alert('⚠️ مكتبة PDF.js غير متوفرة في الصفحة.');
-        return;
-      }
-
-      showToast('⏳ جاري قراءة وتحليل بيانات ملف الشهادة (PDF)...');
-
-      try {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL('libs/pdf.worker.min.js');
-      } catch (wErr) {
-        console.warn('[PDF.js] Worker source warning:', wErr);
-      }
-
-      const arrayBuffer = await file.arrayBuffer();
-      const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-      const pdfDoc = await loadingTask.promise;
-
-      let extractedFullText = '';
-      const textItems = [];
-
-      for (let pNum = 1; pNum <= pdfDoc.numPages; pNum++) {
-        const page = await pdfDoc.getPage(pNum);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(' ');
-        extractedFullText += '\n' + pageText;
-        textItems.push(...textContent.items);
-      }
-
-      console.log('[PdfImport] Extracted text from PDF:', extractedFullText);
-
-      const parsedData = parsePdfCertificateText(extractedFullText, textItems);
-
-      // Populate inputs in Manual Tab
-      if (inpManName) inpManName.value = parsedData.name || '';
-      if (inpManNatId) inpManNatId.value = parsedData.nationalId || '';
-      if (inpManIdNo) inpManIdNo.value = parsedData.idNo || '';
-      if (inpManCenter) inpManCenter.value = parsedData.center || '';
-      if (inpManSheikhah) inpManSheikhah.value = parsedData.village || '';
-      if (inpManPlace) inpManPlace.value = parsedData.address || '';
-
-      // Populate inputs in Upload Tab
-      if (inpName) inpName.value = parsedData.name || '';
-      if (inpNatId) inpNatId.value = parsedData.nationalId || '';
-      if (inpCenter) inpCenter.value = parsedData.center || '';
-      if (inpVillage) inpVillage.value = parsedData.village || '';
-      if (inpPlace) inpPlace.value = parsedData.address || '';
-
-      // Populate Committee
-      if (inpSurveyor && parsedData.surveyor) inpSurveyor.value = parsedData.surveyor;
-      if (inpDirector && parsedData.director) inpDirector.value = parsedData.director;
-      if (inpReviewer && parsedData.reviewer) inpReviewer.value = parsedData.reviewer;
-
-      // Populate Centroid
-      const cLon = parsedData.centroidLon;
-      const cLat = parsedData.centroidLat;
-      if (inpCentroidLng && cLon !== null && cLon !== undefined && !isNaN(cLon)) {
-        inpCentroidLng.value = Number(cLon).toFixed(6);
-      }
-      if (inpCentroidLat && cLat !== null && cLat !== undefined && !isNaN(cLat)) {
-        inpCentroidLat.value = Number(cLat).toFixed(6);
-      }
-      if (centroidStatusBadge) {
-        centroidStatusBadge.textContent = 'مستورد من PDF 📄';
-        centroidStatusBadge.classList.add('edited');
-      }
-
-      // Check boundary points or build standard bounding geometry around centroid
-      let finalVertices = [];
-      if (parsedData.points && parsedData.points.length >= 3) {
-        finalVertices = parsedData.points;
-        manualPoints = finalVertices.map(v => ({ x: String(v.lon || v.x), y: String(v.lat || v.y) }));
-      } else if (cLon && cLat && !isNaN(cLon) && !isNaN(cLat)) {
-        // Construct bounding polygon of ~15m around centroid
-        const dDegLat = 0.00007; // ~7.8 meters
-        const dDegLon = 0.00008; // ~7.6 meters
-        finalVertices = [
-          { id: 1, lat: Number((cLat + dDegLat).toFixed(7)), lon: Number((cLon - dDegLon).toFixed(7)) },
-          { id: 2, lat: Number((cLat + dDegLat).toFixed(7)), lon: Number((cLon + dDegLon).toFixed(7)) },
-          { id: 3, lat: Number((cLat - dDegLat).toFixed(7)), lon: Number((cLon + dDegLon).toFixed(7)) },
-          { id: 4, lat: Number((cLat - dDegLat).toFixed(7)), lon: Number((cLon - dDegLon).toFixed(7)) }
-        ];
-        manualPoints = finalVertices.map(v => ({ x: String(v.lon), y: String(v.lat) }));
-      } else {
-        // Fallback default coordinates
-        const defaultLat = 31.063055;
-        const defaultLon = 31.404767;
-        const dDegLat = 0.00007;
-        const dDegLon = 0.00008;
-        finalVertices = [
-          { id: 1, lat: Number((defaultLat + dDegLat).toFixed(7)), lon: Number((defaultLon - dDegLon).toFixed(7)) },
-          { id: 2, lat: Number((defaultLat + dDegLat).toFixed(7)), lon: Number((defaultLon + dDegLon).toFixed(7)) },
-          { id: 3, lat: Number((defaultLat - dDegLat).toFixed(7)), lon: Number((defaultLon + dDegLon).toFixed(7)) },
-          { id: 4, lat: Number((defaultLat - dDegLat).toFixed(7)), lon: Number((defaultLon - dDegLon).toFixed(7)) }
-        ];
-        manualPoints = finalVertices.map(v => ({ x: String(v.lon), y: String(v.lat) }));
-      }
-
-      renderManualPointsTable();
-
-      // Calculate Metrics
-      let areaVal = 100;
-      let perimVal = 40;
-      let optDist = 300;
-      if (window.GeoEngine && typeof GeoEngine.calculateGeodesicPolygonMetrics === 'function') {
-        try {
-          const metrics = GeoEngine.calculateGeodesicPolygonMetrics(finalVertices);
-          if (metrics) {
-            areaVal = metrics.areaSqM || 100;
-            perimVal = metrics.perimeterM || 40;
-            optDist = metrics.optimalDistance || 300;
-          }
-        } catch (mErr) {
-          console.warn('[PdfImport] Metrics calculation warning:', mErr);
-        }
-      }
-
-      // Create Active Parcel
-      const centerCoord = {
-        lon: (cLon !== null && cLon !== undefined && !isNaN(cLon)) ? Number(cLon) : finalVertices[0].lon,
-        lat: (cLat !== null && cLat !== undefined && !isNaN(cLat)) ? Number(cLat) : finalVertices[0].lat
-      };
-
-      currentParcel = {
-        applicantName: parsedData.name || 'المواطن',
-        nationalId: parsedData.nationalId || '',
-        idNo: parsedData.idNo || '',
-        centerCity: parsedData.center || '',
-        markaz: parsedData.center || '',
-        village: parsedData.village || '',
-        sheikhah: parsedData.village || '',
-        place: parsedData.address || '',
-        placeName: parsedData.address || '',
-        basin: parsedData.address || '',
-        activity: 'سكني',
-        governate: 'الدقهلية',
-        crs: 'WGS84 (EPSG:4326)',
-        calculatedAreaM2: areaVal,
-        statedAreaM2: areaVal,
-        area: areaVal,
-        perimeterM: perimVal,
-        perimeter: perimVal,
-        optimalDistance: optDist,
-        center: centerCoord,
-        centerLng: centerCoord.lon,
-        centerLat: centerCoord.lat,
-        centroid: centerCoord,
-        isCentroidUserEdited: true,
-        vertices: finalVertices,
-        earthUrl: `https://earth.google.com/web/@${Number(centerCoord.lat).toFixed(6)},${Number(centerCoord.lon).toFixed(6)},300d,35y,0t,0r`
-      };
-
-      // Save to chrome storage & Open Preview Window directly
-      if (chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({
-          currentParcel: currentParcel,
-          previewData: {
-            parcel: currentParcel,
-            shots: [],
-            committee: {
-              surveyor: parsedData.surveyor || 'مسؤول المتغيرات المكانية',
-              director: parsedData.director || 'مروة محمد رضوان',
-              reviewer: parsedData.reviewer || 'د / عماد عبدالله احمد'
-            }
-          }
-        }, () => {
-          chrome.tabs.create({ url: chrome.runtime.getURL('preview/preview.html') });
-        });
-      }
-
-      displayParcel(currentParcel);
-      tabBtnManual.click();
-      showToast(`📄 تم استيراد بيانات الشهادة (${parsedData.name || 'المواطن'}) وفتح واجهة التعديل والطباعة بنجاح!`);
-
-    } catch (err) {
-      console.error('[PdfImport] Failed to parse PDF:', err);
-      alert('⚠️ حدث خطأ أثناء قراءة ملف الـ PDF: ' + (err.message || err));
-    }
+    alert('💡 تم تخفيف حجم الإضافة وحذف محرك تفريغ الـ PDF القديم.
+يرجى استيراد ملف الرفع المساحي المباشر (Excel / CSV) أو ملف المشروع السابق (JSON).');
+    return;
   }
 
   function parsePdfCertificateText(rawText, items) {
@@ -2581,4 +2406,59 @@ document.addEventListener('DOMContentLoaded', () => {
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 3500);
   }
+
+  // --- AUTO-SAVE RESILIENCE ON INPUT ---
+  function scheduleAutoSave() {
+    if (!currentParcel) return;
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({
+        currentParcel: currentParcel,
+        capturedShots: capturedShots,
+        lastAutoSaveTime: new Date().toLocaleTimeString('ar-EG')
+      });
+    }
+  }
+
+  // Auto-save listeners on text inputs
+  ['inp-name', 'inp-nat-id', 'inp-center', 'inp-village', 'inp-place',
+   'inp-man-name', 'inp-man-nat-id', 'inp-man-id-no', 'inp-man-center', 'inp-man-sheikhah', 'inp-man-place',
+   'inp-surveyor', 'inp-director', 'inp-reviewer'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', () => {
+        if (currentParcel) {
+          if (id === 'inp-name' || id === 'inp-man-name') currentParcel.applicantName = el.value.trim();
+          if (id === 'inp-nat-id' || id === 'inp-man-nat-id') currentParcel.nationalId = el.value.trim();
+          if (id === 'inp-center' || id === 'inp-man-center') currentParcel.centerCity = el.value.trim();
+          if (id === 'inp-village' || id === 'inp-man-sheikhah') currentParcel.village = el.value.trim();
+          if (id === 'inp-place' || id === 'inp-man-place') currentParcel.place = el.value.trim();
+        }
+        scheduleAutoSave();
+      });
+    }
+  });
+
+  // Auto-restore check on startup
+  setTimeout(() => {
+    if (!currentParcel && chrome.storage && chrome.storage.local) {
+      chrome.storage.local.get(['currentParcel', 'capturedShots', 'lastAutoSaveTime'], (res) => {
+        if (res.currentParcel && res.currentParcel.vertices && res.currentParcel.vertices.length > 0) {
+          const cName = res.currentParcel.applicantName || 'المواطن';
+          const time = res.lastAutoSaveTime || 'سابقاً';
+          const restore = confirm(`📂 تم العثور على مسودة عمل سابقة محفوظة تلقائياً لـ (${cName} - ${time}).\nهل تريد استعادتها ومتابعة العمل عليها؟`);
+          if (restore) {
+            currentParcel = res.currentParcel;
+            displayParcel(currentParcel);
+            if (res.capturedShots && Array.isArray(res.capturedShots)) {
+              capturedShots = res.capturedShots;
+              renderShotsGallery();
+            }
+            flyEarthTabToParcel(currentParcel);
+            showToast(`📂 تم استرجاع جلسة العمل بنجاح: ${cName}`);
+          }
+        }
+      });
+    }
+  }, 1000);
+
 });

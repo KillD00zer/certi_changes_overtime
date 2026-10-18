@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         imgDakahliaLogo.src = 'data:image/png;base64,' + window.TemplateAssets.DAKAHLIA_LOGO;
       }
       if (window.TemplateAssets.SPATIAL_LOGO) {
-        imgSpatialLogo.src = 'data:image/png;base64,' + window.TemplateAssets.SPATIAL_LOGO;
+        imgSpatialLogo.src = 'data:image/jpeg;base64,' + window.TemplateAssets.SPATIAL_LOGO;
       }
       if (window.TemplateAssets.NORTH_ARROW) {
         imgNorthArrow.src = 'data:image/png;base64,' + window.TemplateAssets.NORTH_ARROW;
