@@ -9,13 +9,31 @@ import os
 import sys
 import json
 import time
+import shutil
+import urllib.request
+import zipfile
 import subprocess
 from http.server import HTTPServer, BaseHTTPRequestHandler
+
+# Ensure stdout and stderr never crash under pythonw.exe
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, 'w', encoding='utf-8')
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, 'w', encoding='utf-8')
 
 PROJ_DIR = os.path.dirname(os.path.abspath(__file__))
 EXT_DIR = os.path.join(PROJ_DIR, "extension")
 BUILD_INFO_PATH = os.path.join(EXT_DIR, "build_info.json")
 PORT = 8766
+
+
+def log(msg):
+    try:
+        log_file = os.path.join(PROJ_DIR, "updater_service.log")
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {msg}\n")
+    except Exception:
+        pass
 
 
 def get_current_commit():
@@ -28,7 +46,7 @@ def get_current_commit():
             text=True,
             timeout=5
         )
-        if res.returncode == 0:
+        if res.returncode == 0 and res.stdout.strip():
             return res.stdout.strip()
     except Exception:
         pass
@@ -62,42 +80,98 @@ def update_build_info(commit_hash):
             json.dump(data, f, indent=2, ensure_ascii=False)
         return True
     except Exception as e:
-        print(f"[Error] Failed to write build_info.json: {e}")
+        log(f"Failed to write build_info.json: {e}")
+        return False
+
+
+def zip_fallback_pull():
+    """Direct zip download and extraction fallback."""
+    zip_url = "https://github.com/KillD00zer/certi_changes_overtime/archive/refs/heads/main.zip"
+    temp_zip = os.path.join(PROJ_DIR, "_update_temp.zip")
+    temp_dir = os.path.join(PROJ_DIR, "_update_temp_unpacked")
+
+    try:
+        log("Downloading zip fallback from GitHub...")
+        urllib.request.urlretrieve(zip_url, temp_zip)
+
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir, ignore_errors=True)
+        os.makedirs(temp_dir, exist_ok=True)
+
+        with zipfile.ZipFile(temp_zip, "r") as zf:
+            zf.extractall(temp_dir)
+
+        # Locate extracted extension dir
+        root_entries = [os.path.join(temp_dir, d) for d in os.listdir(temp_dir) if os.path.isdir(os.path.join(temp_dir, d))]
+        if root_entries:
+            src_ext = os.path.join(root_entries[0], "extension")
+            if os.path.exists(src_ext):
+                # Copy files into EXT_DIR
+                for item in os.listdir(src_ext):
+                    s = os.path.join(src_ext, item)
+                    d = os.path.join(EXT_DIR, item)
+                    if os.path.isdir(s):
+                        if os.path.exists(d):
+                            shutil.rmtree(d, ignore_errors=True)
+                        shutil.copytree(s, d)
+                    else:
+                        shutil.copy2(s, d)
+
+        # Cleanup
+        if os.path.exists(temp_zip):
+            os.remove(temp_zip)
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+        log("Zip fallback update applied successfully.")
+        return True
+    except Exception as e:
+        log(f"Zip fallback failed: {e}")
         return False
 
 
 def perform_git_pull():
-    """Execute git pull and return status and commit hash."""
-    try:
-        # 1. Fetch
-        subprocess.run(["git", "fetch", "origin", "main"], cwd=PROJ_DIR, capture_output=True, timeout=25)
-        # 2. Pull
-        pull_res = subprocess.run(["git", "pull", "origin", "main"], cwd=PROJ_DIR, capture_output=True, text=True, timeout=30)
-        
-        new_commit = get_current_commit()
-        update_build_info(new_commit)
+    """Execute git pull with fallback and return status and commit hash."""
+    log("perform_git_pull requested")
+    success = False
+    output = ""
 
+    # Attempt 1: Git
+    try:
+        subprocess.run(["git", "fetch", "origin", "main"], cwd=PROJ_DIR, capture_output=True, timeout=20)
+        pull_res = subprocess.run(["git", "pull", "origin", "main"], cwd=PROJ_DIR, capture_output=True, text=True, timeout=25)
         if pull_res.returncode == 0:
-            return {
-                "success": True,
-                "commit": new_commit,
-                "output": pull_res.stdout.strip(),
-                "message": "تم سحب وتطبيق أحدث كود من GitHub بنجاح"
-            }
+            success = True
+            output = pull_res.stdout.strip()
+            log(f"git pull succeeded: {output}")
         else:
-            return {
-                "success": False,
-                "commit": new_commit,
-                "error": pull_res.stderr.strip() or "فشل سحب التحديث",
-                "message": "تعذر إتمام git pull تلقائياً"
-            }
-    except Exception as e:
-        return {
-            "success": False,
-            "commit": get_current_commit(),
-            "error": str(e),
-            "message": "خطأ أثناء محاولة سحب التحديث"
-        }
+            log(f"git pull failed with code {pull_res.returncode}, attempting clean...")
+            # Stash or reset working tree
+            subprocess.run(["git", "checkout", "--", "."], cwd=PROJ_DIR, capture_output=True, timeout=10)
+            retry = subprocess.run(["git", "pull", "origin", "main"], cwd=PROJ_DIR, capture_output=True, text=True, timeout=25)
+            if retry.returncode == 0:
+                success = True
+                output = retry.stdout.strip()
+                log(f"git pull retry succeeded: {output}")
+    except Exception as ge:
+        log(f"git pull exception: {ge}")
+
+    # Attempt 2: Zip fallback if git pull wasn't successful
+    if not success:
+        log("Trying direct zip fallback...")
+        if zip_fallback_pull():
+            success = True
+            output = "تم التحديث عبر حزمة GitHub المباشرة بنجاح."
+
+    new_commit = get_current_commit()
+    update_build_info(new_commit)
+
+    return {
+        "success": success,
+        "commit": new_commit,
+        "output": output,
+        "message": "تم سحب وتطبيق أحدث كود من GitHub بنجاح" if success else "تعذر استكمال السحب التلقائي"
+    }
 
 
 class UpdaterRequestHandler(BaseHTTPRequestHandler):
@@ -105,7 +179,8 @@ class UpdaterRequestHandler(BaseHTTPRequestHandler):
         return self.client_address[0]
 
     def log_message(self, format, *args):
-        sys.stderr.write(f"[{time.strftime('%H:%M:%S')}] {self.client_address[0]} - {format % args}\n")
+        # Safe logging without stdout/stderr crash
+        pass
 
     def send_cors_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -153,17 +228,17 @@ class UpdaterRequestHandler(BaseHTTPRequestHandler):
 
 
 def run_service():
+    log("Starting DUDC Extension Updater Service...")
     current_commit = get_current_commit()
     update_build_info(current_commit)
 
     server_address = ("127.0.0.1", PORT)
     try:
         httpd = HTTPServer(server_address, UpdaterRequestHandler)
-        print(f"[Updater] DUDC Extension Updater Service running on http://127.0.0.1:{PORT}")
-        print(f"[Updater] Current local commit: {current_commit}")
+        log(f"Updater service listening on 127.0.0.1:{PORT}")
         httpd.serve_forever()
     except OSError as e:
-        print(f"[Updater] Port {PORT} already in use or error: {e}")
+        log(f"Port {PORT} error or already bound: {e}")
 
 
 if __name__ == "__main__":

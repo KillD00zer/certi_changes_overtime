@@ -44,10 +44,15 @@ echo [*] مسار الإضافة: %EXT_PATH%
 echo [*] جاري تشغيل المتصفح وتحميل الإضافة تلقائياً...
 echo.
 
-:: تشغيل خدمة التحديث المباشر التلقائي بالخلفية لدعم زر التحديث داخل الإضافة
-where python >nul 2>&1
+:: تشغيل خدمة التحديث المباشر التلقائي بالخلفية لدعم زر التحديث داخل الإضافة (Detached Daemon)
+where pythonw >nul 2>&1
 if %ERRORLEVEL% equ 0 (
-    start /b "" python "%~dp0updater_service.py" >nul 2>&1
+    start "" pythonw "%~dp0updater_service.py"
+) else (
+    where python >nul 2>&1
+    if %ERRORLEVEL% equ 0 (
+        start "" /min python "%~dp0updater_service.py"
+    )
 )
 
 :: استخدام بروفايل مخصص لضمان تحميل الإضافة حتى لو كان المتصفح مفتوحاً مسبقاً

@@ -29,3 +29,6 @@ desktop.ini
 .idea/
 
 .browser_profile/
+
+updater_service.log
+*.log
