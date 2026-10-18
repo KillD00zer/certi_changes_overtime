@@ -2209,7 +2209,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const appVersionBadge = document.getElementById('app-version-badge');
 
   const currentLocalVersion = (chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest().version : '3.0.0';
-  let currentLocalCommit = '2584f01';
+  let currentLocalCommit = 'e4d7f00';
 
   async function getLocalBuildInfo() {
     try {
