@@ -765,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const filename = file.name.toLowerCase();
     try {
       if (filename.endsWith('.docx')) {
-        await importDocxCertificate(file);
+        alert('⚠️ تم الاستغناء عن ملفات Word بالكامل لصالح الاعتماد الرقمي وتصدير الـ PDF المتجه. يرجى استخدام ملف المشروع (JSON) أو ملف الشهادة (.certi)');
       } else if (filename.endsWith('.pdf')) {
         await importPdfCertificate(file);
       } else if (filename.endsWith('.certi') || filename.endsWith('.json')) {

@@ -2276,49 +2276,83 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- 9. OFFICIAL DOCX & CSV BUNDLE EXPORT ---
-  btnGenerateDocx.addEventListener('click', async () => {
-    if (!currentParcel) {
-      alert('يرجى تحميل أو إدخال بيانات الرفع المساحي أولاً.');
-      return;
-    }
+    // --- 9. OFFICIAL CITIZEN PACKAGE EXPORT (JSON + CSV + IMAGES) ---
+  const btnExportPkg = document.getElementById('btn-export-citizen-package') || document.getElementById('btn-generate-docx');
+  if (btnExportPkg) {
+    btnExportPkg.addEventListener('click', async () => {
+      if (!currentParcel) {
+        alert('يرجى تحميل أو إدخال بيانات الرفع المساحي أولاً.');
+        return;
+      }
 
-    if (capturedShots.length < 2) {
-      alert('⚠️ النماذج الرسمية لبيان التسلسل الزمني تتطلب توثيق صورتين على الأقل (القوالب تدعم من 2 إلى 6 صور). يرجى التقاط صورتين لسنتين مختلفتين أولاً.');
-      return;
-    }
+      if (capturedShots.length < 2) {
+        alert('⚠️ بيان التسلسل الزمني يتطلب توثيق صورتين على الأقل (تدعم من 2 إلى 6 صور). يرجى التقاط صورتين لسنتين مختلفتين أولاً.');
+        return;
+      }
 
-    btnGenerateDocx.disabled = true;
-    btnGenerateDocx.innerHTML = '<span>⏳ جارٍ إنشاء وتنسيق بيان التسلسل الزمني الرسمي...</span>';
+      btnExportPkg.disabled = true;
+      btnExportPkg.innerHTML = '<span>⏳ جارٍ تجميع حزمة المواطن وضغط الصور...</span>';
 
-    try {
-      const committee = {
-        surveyor: inpSurveyor.value.trim() || 'مسؤول المتغيرات المكانية',
-        reviewer: inpReviewer.value.trim() || 'د / عماد عبدالله احمد',
-        director: inpDirector.value.trim() || 'مروة محمد رضوان'
-      };
+      try {
+        const committee = {
+          surveyor: (document.getElementById('inp-surveyor') ? document.getElementById('inp-surveyor').value : '').trim() || 'مسؤول المتغيرات المكانية',
+          reviewer: (document.getElementById('inp-reviewer') ? document.getElementById('inp-reviewer').value : '').trim() || 'د / عماد عبدالله احمد',
+          director: (document.getElementById('inp-director') ? document.getElementById('inp-director').value : '').trim() || 'مروة محمد رضوان'
+        };
 
-      // 1. Generate DOCX Blob matching official template
-      const docxBlob = await DocxBuilder.generateDocxReport(currentParcel, capturedShots, committee);
+        const citizenSafe = (currentParcel.applicantName || 'المواطن').replace(/[\/:*?"<>|]/g, '_').trim();
+        const centerSafe = (currentParcel.centerCity || currentParcel.markaz || 'المركز').replace(/[\/:*?"<>|]/g, '_').trim();
+        const baseName = `${citizenSafe}-${centerSafe}`;
 
-      // 2. Generate Polygon CSV Content
-      const csvContent = GeoEngine.generatePolygonCsvContent(currentParcel, currentParcel.vertices);
+        const zip = new JSZip();
 
-      // 3. Prepare Folder and File Names
-      const citizenSafe = (currentParcel.applicantName || 'المواطن').replace(/[\\/:*?"<>|]/g, '_');
-      const idNoSafe = (currentParcel.idNo || '62644774').replace(/[\\/:*?"<>|]/g, '_');
-      const folderName = `${citizenSafe} - ${idNoSafe}`;
-      const docFilename = `بيان_تسلسل_زمني_${citizenSafe}.docx`;
-      const csvFilename = `Polygon_${idNoSafe}.csv`;
+        // 1. Session JSON for full 1-click restore
+        const sessionPayload = {
+          version: '3.0.0',
+          exportedAt: new Date().toISOString(),
+          parcel: currentParcel,
+          committee: committee,
+          capturedShots: capturedShots.map(s => ({
+            id: s.id,
+            year: s.year,
+            month: s.month,
+            label: s.label,
+            status: s.status,
+            notes: s.notes,
+            dataUrl: s.dataUrl
+          }))
+        };
+        zip.file(`${baseName}_بيانات_المشروع.json`, JSON.stringify(sessionPayload, null, 2));
 
-      // 4. Download into folder via Chrome Downloads API if available
-      if (chrome.downloads && chrome.downloads.download) {
-        const docUrl = URL.createObjectURL(docxBlob);
-        chrome.downloads.download({
-          url: docUrl,
-          filename: `${folderName}/${docFilename}`,
-          saveAs: false
+        // 2. Polygon CSV
+        const csvContent = GeoEngine.generatePolygonCsvContent(currentParcel, currentParcel.vertices);
+        zip.file(`${baseName}_رفع_مساحي.csv`, "﻿" + csvContent);
+
+        // 3. High-Res Satellite Photos folder
+        const imgFolder = zip.folder("الصور_الفضائية_الموثقة");
+        capturedShots.forEach((shot, idx) => {
+          if (shot.dataUrl && shot.dataUrl.includes(',')) {
+            const b64Data = shot.dataUrl.split(',')[1];
+            const safeYear = shot.year || (idx + 1);
+            const safeStatus = (shot.status || `صورة_${idx+1}`).replace(/[\/:*?"<>|]/g, '_');
+            imgFolder.file(`${idx+1}_تصوير_${safeYear}_${safeStatus}.png`, b64Data, { base64: true });
+          }
         });
+
+        // 4. Generate Zip Blob
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        saveAs(zipBlob, `${baseName}_حزمة_المواطن.zip`);
+
+        showToast(`📦 تم تنزيل حزمة المواطن المتكاملة: ${baseName}`);
+      } catch (err) {
+        console.error(err);
+        alert('حدث خطأ أثناء تصدير الحزمة: ' + err.message);
+      } finally {
+        btnExportPkg.disabled = false;
+        btnExportPkg.innerHTML = '<span>📦 تصدير حزمة المواطن المتكاملة (JSON + CSV + الصور الأصلية)</span>';
+      }
+    });
+  }
 
         const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const csvUrl = URL.createObjectURL(csvBlob);
