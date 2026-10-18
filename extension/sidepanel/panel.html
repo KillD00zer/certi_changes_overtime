@@ -577,56 +577,55 @@
 
   </main>
 
-  <!-- Modal: System Update & Reset Dialog -->
+  <!-- Modal: System Update Dialog (DUDC Style Clean UI) -->
   <div id="modal-update-dialog" class="update-modal-backdrop" style="display: none;">
     <div class="update-modal-box">
       <div class="update-modal-header">
-        <div class="update-modal-title">
-          <span>🔄 فحص التحديثات وإعادة تشغيل الإضافة</span>
+        <div class="update-modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <span>🔄</span>
+          <span style="font-weight: 800; font-size: 15px; color: #38bdf8;">فحص وتحديث المنظومة (GitHub)</span>
+          <span id="update-modal-badge" class="badge-subtle" style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8;">جارٍ الفحص...</span>
         </div>
         <button type="button" id="btn-close-update-modal" class="btn-close-modal" title="إغلاق">✕</button>
       </div>
+
       <div class="update-modal-body">
-        <div class="update-version-row">
-          <div class="version-item">
-            <span class="version-label">الإصدار الحالي المثبت:</span>
-            <span class="version-val current-val" id="lbl-curr-version">v3.0.0</span>
+        <!-- Version Info Bar -->
+        <div class="update-version-row" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 12px;">
+          <div>
+            <span style="color: #94a3b8;">الإصدار المثبت:</span>
+            <strong class="version-val current-val" id="lbl-curr-version" style="font-family: monospace; color: #f8fafc; margin-right: 4px;">v3.0.0</strong>
           </div>
-          <div class="version-item">
-            <span class="version-label">أحدث إصدار متاح (Release):</span>
-            <span class="version-val remote-val" id="lbl-remote-version">جاري الفحص...</span>
+          <div>
+            <span style="color: #94a3b8;">أحدث إصدار (GitHub):</span>
+            <strong class="version-val remote-val" id="lbl-remote-version" style="font-family: monospace; color: #38bdf8; margin-right: 4px;">جاري الفحص...</strong>
           </div>
+          <button type="button" id="btn-recheck-update" class="btn btn-xs btn-outline-cyan" style="padding: 3px 8px; font-size: 11px;">
+            🔄 إعادة الفحص
+          </button>
         </div>
 
-        <div id="update-release-meta" class="update-release-meta" style="display: none;">
-          <span id="lbl-release-tag" class="release-tag-pill"></span>
-          <span id="lbl-release-date" class="release-date"></span>
+        <div id="update-release-meta" class="update-release-meta" style="display: none; font-size: 11px; color: #cbd5e1; margin-bottom: 8px;">
+          <span id="lbl-release-tag" class="release-tag-pill" style="background: rgba(56, 189, 248, 0.15); color: #bae6fd; padding: 2px 6px; border-radius: 4px; font-family: monospace;"></span>
+          <span id="lbl-release-date" class="release-date" style="margin-right: 8px; color: #94a3b8;"></span>
         </div>
 
-        <div id="update-status-msg" class="update-status-alert info">
-          <span>🔍 جاري الاتصال بمستودع GitHub للتحقق من وجود تحديثات جديدة...</span>
+        <!-- Dynamic Status Alert Box -->
+        <div id="update-status-msg" class="update-status-alert info" style="padding: 12px; border-radius: 8px; font-size: 12.5px; line-height: 1.6; margin-bottom: 10px;">
+          <span>🔍 جارٍ الاتصال بمستودع GitHub للتحقق من وجود تحديثات جديدة...</span>
         </div>
 
-        <div class="update-actions-list">
-          <!-- Action 1: Instant Reload Extension -->
-          <div class="update-action-card">
-            <div class="action-info">
-              <strong>↻ إعادة تعيين وتحميل الإضافة (Reset & Reload)</strong>
-              <p>تفريغ ذاكرة الإضافة بالكامل وتحميل الكود المحدث فوراً دون الحاجة لإعادة فتح المتصفح.</p>
-            </div>
-            <button type="button" id="btn-reload-extension" class="btn btn-sm btn-primary">
-              ↻ ريلود للإضافة
-            </button>
-          </div>
+        <!-- Incoming Commits / Release Notes Container -->
+        <div id="update-commits-container" style="display: none; max-height: 160px; overflow-y: auto; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 8px; margin-bottom: 12px; font-size: 11.5px; line-height: 1.5; color: #cbd5e1;">
+        </div>
 
-          <!-- Action 2: Run Update Script -->
-          <div class="update-action-card">
-            <div class="action-info">
-              <strong>⚡ تنزيل وتثبيت أحدث كود من GitHub</strong>
-              <p>شغّل ملف <code style="color:#38bdf8; font-weight: bold;">تحديث_المنظومة.bat</code> الموجود بمجلد البرنامج لاستبدال الملفات تلقائياً بآخر تحديث.</p>
-            </div>
-            <button type="button" id="btn-download-updater-bat" class="btn btn-sm btn-secondary" title="تنزيل سكربت التحديث المباشر">
-              📥 تنزيل ملف التحديث (.bat)
+        <!-- Action Footer -->
+        <div class="update-modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 12px; margin-top: 8px;">
+          <span style="font-size: 11px; color: #64748b;">مستودع رسمي: KillD00zer/certi_changes_overtime</span>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-dismiss-update-modal" style="padding: 6px 12px; font-size: 12px;">إغلاق</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-reload-extension" style="padding: 6px 16px; font-size: 12px; font-weight: 800; background: linear-gradient(135deg, #0284c7, #0369a1);">
+              🚀 سحب وتطبيق التحديث (Pull & Reload)
             </button>
           </div>
         </div>

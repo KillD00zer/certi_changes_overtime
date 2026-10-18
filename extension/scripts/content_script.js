@@ -377,50 +377,64 @@
 
       const centerGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       centerGroup.setAttribute('class', 'earth-center-point-marker');
+      centerGroup.setAttribute('title', `📍 موقع المعاملة (اسحب بالفأرة لتعديل الموضع): ${Number(cLon).toFixed(6)}, ${Number(cLat).toFixed(6)}`);
+      centerGroup.style.cursor = 'grab';
 
-      // 1. Outer target ring
+      // Hit area
+      const cHitArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      cHitArea.setAttribute('cx', ptX);
+      cHitArea.setAttribute('cy', ptY);
+      cHitArea.setAttribute('r', '24');
+      cHitArea.setAttribute('fill', 'transparent');
+      centerGroup.appendChild(cHitArea);
+
+      // 1. Radar Glowing Target Ring (Red / Rose for Location Pin)
       const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       ring.setAttribute('cx', ptX);
       ring.setAttribute('cy', ptY);
-      ring.setAttribute('r', isOverlayLocked ? '10' : '13');
-      ring.setAttribute('fill', isOverlayLocked ? 'rgba(239, 68, 68, 0.2)' : 'rgba(56, 189, 248, 0.25)');
-      ring.setAttribute('stroke', isOverlayLocked ? '#ef4444' : '#38bdf8');
+      ring.setAttribute('r', isOverlayLocked ? '12' : '15');
+      ring.setAttribute('fill', 'rgba(239, 68, 68, 0.25)');
+      ring.setAttribute('stroke', '#ef4444');
       ring.setAttribute('stroke-width', '2');
       if (!isOverlayLocked) {
-        ring.setAttribute('stroke-dasharray', '3,3');
+        ring.setAttribute('stroke-dasharray', '4,3');
       }
-      ring.setAttribute('filter', 'url(#hud-glow)');
       centerGroup.appendChild(ring);
 
-      // 2. Inner target center bullseye
-      const centerDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      centerDot.setAttribute('cx', ptX);
-      centerDot.setAttribute('cy', ptY);
-      centerDot.setAttribute('r', '3.5');
-      centerDot.setAttribute('fill', '#ffffff');
-      centerDot.setAttribute('stroke', isOverlayLocked ? '#ef4444' : '#38bdf8');
-      centerDot.setAttribute('stroke-width', '1.5');
-      centerGroup.appendChild(centerDot);
+      // 2. Teardrop Location Pin Path 📍
+      const pinPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      pinPath.setAttribute('d', `M ${ptX},${ptY} C ${ptX-8},${ptY-12} ${ptX-10},${ptY-22} ${ptX},${ptY-22} C ${ptX+10},${ptY-22} ${ptX+8},${ptY-12} ${ptX},${ptY} Z`);
+      pinPath.setAttribute('fill', '#ef4444');
+      pinPath.setAttribute('stroke', '#ffffff');
+      pinPath.setAttribute('stroke-width', '1.5');
+      centerGroup.appendChild(pinPath);
 
-      // 3. Subtle Crosshair ticks
+      // 3. Inner White Dot inside pin head
+      const pinHeadDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      pinHeadDot.setAttribute('cx', ptX);
+      pinHeadDot.setAttribute('cy', ptY - 15);
+      pinHeadDot.setAttribute('r', '3');
+      pinHeadDot.setAttribute('fill', '#ffffff');
+      centerGroup.appendChild(pinHeadDot);
+
+      // 4. Subtle Crosshair Ticks
       [
-        { x1: ptX - 16, y1: ptY, x2: ptX - 11, y2: ptY },
-        { x1: ptX + 11, y1: ptY, x2: ptX + 16, y2: ptY },
-        { x1: ptX, y1: ptY - 16, x2: ptX, y2: ptY - 11 },
-        { x1: ptX, y1: ptY + 11, x2: ptX, y2: ptY + 16 }
+        { x1: ptX - 18, y1: ptY, x2: ptX - 12, y2: ptY },
+        { x1: ptX + 12, y1: ptY, x2: ptX + 18, y2: ptY },
+        { x1: ptX, y1: ptY - 26, x2: ptX, y2: ptY - 20 },
+        { x1: ptX, y1: ptY + 6, x2: ptX, y2: ptY + 12 }
       ].forEach(coord => {
         const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         line.setAttribute('x1', coord.x1);
         line.setAttribute('y1', coord.y1);
         line.setAttribute('x2', coord.x2);
         line.setAttribute('y2', coord.y2);
-        line.setAttribute('stroke', '#ffffff');
+        line.setAttribute('stroke', '#ef4444');
         line.setAttribute('stroke-width', '1.5');
-        line.setAttribute('stroke-linecap', 'round');
         centerGroup.appendChild(line);
       });
 
-      // 4. Subtle Applicant Name Label below/above/right/left marker with customizable color, size, position, and background
+      // 5. Applicant Name Label
       const currentTextColor = pinTextColor || '#ffffff';
       const currentFontSize = pinTextSize || 12;
       const applicantName = (pinCustomText && pinCustomText !== '🎯 المركز' ? pinCustomText : (currentParcel.applicantName || currentParcel.name || 'موقع المعاملة')).trim();
@@ -433,94 +447,55 @@
       const badgeHeight = Math.round(currentFontSize + 10);
       const gap = 16;
 
-      let bX = 0, bY = 0, tX = 0, tY = 0;
+      let badgeX = 0, badgeY = 0, textX = 0, textY = 0;
       if (currentPosition === 'above') {
-        bX = Math.round(ptX - badgeWidth / 2);
-        bY = Math.round(ptY - gap - badgeHeight);
-        tX = ptX;
-        tY = Math.round(bY + currentFontSize + 2);
+        badgeX = Math.round(ptX - badgeWidth / 2);
+        badgeY = Math.round(ptY - 24 - badgeHeight);
+        textX = ptX;
+        textY = Math.round(ptY - 24 - badgeHeight / 2 + currentFontSize * 0.35);
       } else if (currentPosition === 'right') {
-        bX = Math.round(ptX + gap);
-        bY = Math.round(ptY - badgeHeight / 2);
-        tX = Math.round(bX + badgeWidth / 2);
-        tY = Math.round(bY + currentFontSize + 2);
+        badgeX = Math.round(ptX + gap);
+        badgeY = Math.round(ptY - badgeHeight / 2);
+        textX = Math.round(ptX + gap + badgeWidth / 2);
+        textY = Math.round(ptY + currentFontSize * 0.35);
       } else if (currentPosition === 'left') {
-        bX = Math.round(ptX - gap - badgeWidth);
-        bY = Math.round(ptY - badgeHeight / 2);
-        tX = Math.round(bX + badgeWidth / 2);
-        tY = Math.round(bY + currentFontSize + 2);
+        badgeX = Math.round(ptX - gap - badgeWidth);
+        badgeY = Math.round(ptY - badgeHeight / 2);
+        textX = Math.round(ptX - gap - badgeWidth / 2);
+        textY = Math.round(ptY + currentFontSize * 0.35);
       } else {
-        // below
-        bX = Math.round(ptX - badgeWidth / 2);
-        bY = Math.round(ptY + gap);
-        tX = ptX;
-        tY = Math.round(bY + currentFontSize + 2);
+        badgeX = Math.round(ptX - badgeWidth / 2);
+        badgeY = Math.round(ptY + gap);
+        textX = ptX;
+        textY = Math.round(ptY + gap + badgeHeight / 2 + currentFontSize * 0.35);
       }
 
       if (isShowBg) {
-        // Connecting notch
-        const notch = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        if (currentPosition === 'above') {
-          notch.setAttribute('x1', ptX);
-          notch.setAttribute('y1', ptY - 10);
-          notch.setAttribute('x2', ptX);
-          notch.setAttribute('y2', bY + badgeHeight);
-        } else if (currentPosition === 'right') {
-          notch.setAttribute('x1', ptX + 10);
-          notch.setAttribute('y1', ptY);
-          notch.setAttribute('x2', bX);
-          notch.setAttribute('y2', ptY);
-        } else if (currentPosition === 'left') {
-          notch.setAttribute('x1', ptX - 10);
-          notch.setAttribute('y1', ptY);
-          notch.setAttribute('x2', bX + badgeWidth);
-          notch.setAttribute('y2', ptY);
-        } else {
-          notch.setAttribute('x1', ptX);
-          notch.setAttribute('y1', ptY + 10);
-          notch.setAttribute('x2', ptX);
-          notch.setAttribute('y2', bY);
-        }
-        notch.setAttribute('stroke', currentTextColor);
-        notch.setAttribute('stroke-width', '1');
-        notch.setAttribute('stroke-dasharray', '2,2');
-        centerGroup.appendChild(notch);
-
-        // Translucent pill background
         const badgeBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        badgeBg.setAttribute('x', bX);
-        badgeBg.setAttribute('y', bY);
+        badgeBg.setAttribute('x', badgeX);
+        badgeBg.setAttribute('y', badgeY);
         badgeBg.setAttribute('width', badgeWidth);
         badgeBg.setAttribute('height', badgeHeight);
-        badgeBg.setAttribute('rx', '4');
-        badgeBg.setAttribute('ry', '4');
-        badgeBg.setAttribute('fill', 'rgba(15, 23, 42, 0.85)');
-        badgeBg.setAttribute('stroke', currentTextColor);
+        badgeBg.setAttribute('rx', '6');
+        badgeBg.setAttribute('fill', 'rgba(15, 23, 42, 0.88)');
+        badgeBg.setAttribute('stroke', '#ef4444');
         badgeBg.setAttribute('stroke-width', '1');
         centerGroup.appendChild(badgeBg);
       }
 
-      // Name Text
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      text.setAttribute('x', tX);
-      text.setAttribute('y', tY);
-      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('x', textX);
+      text.setAttribute('y', textY);
       text.setAttribute('fill', currentTextColor);
-      text.setAttribute('font-size', currentFontSize);
-      text.setAttribute('font-family', "'Cairo', 'Segoe UI', Tahoma, sans-serif");
-      text.setAttribute('font-weight', '600');
-      text.setAttribute('letter-spacing', '0.2');
-      if (!isShowBg) {
-        text.setAttribute('paint-order', 'stroke fill');
-        text.setAttribute('stroke', '#0f172a');
-        text.setAttribute('stroke-width', '3');
-        text.setAttribute('stroke-linejoin', 'round');
-      }
+      text.setAttribute('font-size', `${currentFontSize}px`);
+      text.setAttribute('font-weight', '700');
+      text.setAttribute('font-family', 'Cairo, Tajawal, Segoe UI, sans-serif');
+      text.setAttribute('text-anchor', 'middle');
       text.textContent = applicantName;
       centerGroup.appendChild(text);
 
       svg.appendChild(centerGroup);
-      setupDraggable(centerGroup, metersPerPixel, mPerDegLat, mPerDegLon);
+      setupCentroidDraggable(centerGroup, metersPerPixel, mPerDegLat, mPerDegLon);
     } else {
       // MODE 1: Red Polygon outline + numbered vertex circles (inside draggable group)
       const polyGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -590,7 +565,7 @@
         const centroidPin = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         centroidPin.setAttribute('id', 'earth-survey-centroid-pin');
         centroidPin.setAttribute('class', 'earth-survey-centroid-pin');
-        centroidPin.setAttribute('title', `مركز الثقل (اسحب بالفأرة لتعديل الموضع): ${Number(polyCLon).toFixed(6)}, ${Number(polyCLat).toFixed(6)}`);
+        centroidPin.setAttribute('title', `📐 سنترويد المضلع الهندسي (اسحب بالفأرة لتعديل الموضع): ${Number(polyCLon).toFixed(6)}, ${Number(polyCLat).toFixed(6)}`);
         centroidPin.style.pointerEvents = 'auto';
         centroidPin.style.cursor = 'grab';
 
@@ -598,84 +573,83 @@
         const hitArea = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         hitArea.setAttribute('cx', cPx);
         hitArea.setAttribute('cy', cPy);
-        hitArea.setAttribute('r', '22');
+        hitArea.setAttribute('r', '24');
         hitArea.setAttribute('fill', 'transparent');
         hitArea.style.cursor = 'grab';
         centroidPin.appendChild(hitArea);
 
-        const currentTextColor = pinTextColor || '#fbbf24';
+        const currentTextColor = pinTextColor || '#38bdf8';
         const currentFontSize = pinTextSize || 12;
-        const currentTextStr = (pinCustomText !== undefined && pinCustomText !== null && pinCustomText !== '') ? pinCustomText : '🎯 المركز';
+        const currentTextStr = (pinCustomText !== undefined && pinCustomText !== null && pinCustomText !== '' && pinCustomText !== '🎯 المركز') ? pinCustomText : '📐 سنترويد المضلع';
 
-        // Crosshair dashed ticks
+        // Distinctive Geometric Diamond Marker (معين هندسي كاداستري لسنترويد المضلع)
+        // 1. Crosshair axes extending through diamond vertices
         [
-          { x1: cPx - 16, y1: cPy, x2: cPx + 16, y2: cPy },
-          { x1: cPx, y1: cPy - 16, x2: cPx, y2: cPy + 16 }
+          { x1: cPx - 20, y1: cPy, x2: cPx + 20, y2: cPy },
+          { x1: cPx, y1: cPy - 20, x2: cPx, y2: cPy + 20 }
         ].forEach(coords => {
           const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
           l.setAttribute('x1', coords.x1);
           l.setAttribute('y1', coords.y1);
           l.setAttribute('x2', coords.x2);
           l.setAttribute('y2', coords.y2);
-          l.setAttribute('stroke', currentTextColor);
+          l.setAttribute('stroke', '#38bdf8');
           l.setAttribute('stroke-width', '1.6');
-          l.setAttribute('stroke-dasharray', '3,2');
+          l.setAttribute('stroke-dasharray', '4,3');
           centroidPin.appendChild(l);
         });
 
-        const cRing = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        cRing.setAttribute('cx', cPx);
-        cRing.setAttribute('cy', cPy);
-        cRing.setAttribute('r', '12');
-        cRing.setAttribute('fill', 'rgba(15, 23, 42, 0.45)');
-        cRing.setAttribute('stroke', currentTextColor);
-        cRing.setAttribute('stroke-width', '2');
-        centroidPin.appendChild(cRing);
+        // 2. Diamond Polygon (Rotated Square ◊)
+        const dSize = 13;
+        const diamond = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        diamond.setAttribute('points', `${cPx},${cPy - dSize} ${cPx + dSize},${cPy} ${cPx},${cPy + dSize} ${cPx - dSize},${cPy}`);
+        diamond.setAttribute('fill', 'rgba(15, 23, 42, 0.65)');
+        diamond.setAttribute('stroke', '#38bdf8');
+        diamond.setAttribute('stroke-width', '2.5');
+        diamond.setAttribute('filter', 'url(#hud-glow)');
+        centroidPin.appendChild(diamond);
 
+        // 3. Inner Focal Dot
         const cDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         cDot.setAttribute('cx', cPx);
         cDot.setAttribute('cy', cPy);
-        cDot.setAttribute('r', '4.5');
-        cDot.setAttribute('fill', currentTextColor);
-        cDot.setAttribute('stroke', '#ffffff');
+        cDot.setAttribute('r', '3.5');
+        cDot.setAttribute('fill', '#ffffff');
+        cDot.setAttribute('stroke', '#0284c7');
         cDot.setAttribute('stroke-width', '1.5');
         centroidPin.appendChild(cDot);
 
+        // 4. Subtle Label
         if (currentTextStr) {
           const currentPosition = pinTextPosition || 'below';
           const isShowBg = pinShowBg !== false;
 
           const approxCharW = currentFontSize * 0.72;
-          const bgW = Math.max(40, Math.round(currentTextStr.length * approxCharW + 16));
+          const bgW = Math.max(50, Math.round(currentTextStr.length * approxCharW + 16));
           const bgH = Math.round(currentFontSize + 8);
           const gap = 16;
 
-          let bgX = 0;
-          let bgY = 0;
-          let textX = 0;
-          let textY = 0;
-
+          let bgX = 0, bgY = 0, textX = 0, textY = 0;
           if (currentPosition === 'above') {
             bgX = Math.round(cPx - bgW / 2);
             bgY = Math.round(cPy - gap - bgH);
             textX = cPx;
-            textY = Math.round(bgY + currentFontSize + 1);
+            textY = Math.round(cPy - gap - 5);
           } else if (currentPosition === 'right') {
             bgX = Math.round(cPx + gap);
             bgY = Math.round(cPy - bgH / 2);
-            textX = Math.round(bgX + bgW / 2);
-            textY = Math.round(bgY + currentFontSize + 1);
+            textX = Math.round(cPx + gap + bgW / 2);
+            textY = Math.round(cPy + currentFontSize * 0.35);
           } else if (currentPosition === 'left') {
             bgX = Math.round(cPx - gap - bgW);
             bgY = Math.round(cPy - bgH / 2);
-            textX = Math.round(bgX + bgW / 2);
-            textY = Math.round(bgY + currentFontSize + 1);
+            textX = Math.round(cPx - gap - bgW / 2);
+            textY = Math.round(cPy + currentFontSize * 0.35);
           } else {
-            // 'below' (default)
             bgX = Math.round(cPx - bgW / 2);
             bgY = Math.round(cPy + gap);
             textX = cPx;
-            textY = Math.round(bgY + currentFontSize + 1);
+            textY = Math.round(cPy + gap + currentFontSize * 0.85 + 2);
           }
 
           if (isShowBg) {
@@ -685,27 +659,20 @@
             textBg.setAttribute('width', bgW);
             textBg.setAttribute('height', bgH);
             textBg.setAttribute('rx', '4');
-            textBg.setAttribute('fill', 'rgba(15, 23, 42, 0.88)');
-            textBg.setAttribute('stroke', currentTextColor);
-            textBg.setAttribute('stroke-width', '1.2');
+            textBg.setAttribute('fill', 'rgba(15, 23, 42, 0.85)');
+            textBg.setAttribute('stroke', '#38bdf8');
+            textBg.setAttribute('stroke-width', '1');
             centroidPin.appendChild(textBg);
           }
 
-          // Clean official label with customizable color & size
           const cText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
           cText.setAttribute('x', textX);
           cText.setAttribute('y', textY);
+          cText.setAttribute('fill', '#bae6fd');
+          cText.setAttribute('font-size', `${currentFontSize}px`);
+          cText.setAttribute('font-weight', '700');
+          cText.setAttribute('font-family', 'Cairo, Tajawal, Segoe UI, sans-serif');
           cText.setAttribute('text-anchor', 'middle');
-          cText.setAttribute('fill', currentTextColor);
-          cText.setAttribute('font-size', currentFontSize);
-          cText.setAttribute('font-family', "'Cairo', sans-serif");
-          cText.setAttribute('font-weight', 'bold');
-          if (!isShowBg) {
-            cText.setAttribute('paint-order', 'stroke fill');
-            cText.setAttribute('stroke', '#0f172a');
-            cText.setAttribute('stroke-width', '3');
-            cText.setAttribute('stroke-linejoin', 'round');
-          }
           cText.textContent = currentTextStr;
           centroidPin.appendChild(cText);
         }
@@ -763,7 +730,8 @@
 
         const labelText = element.querySelector('text');
         if (labelText) {
-          labelText.textContent = `🎯 المركز: ${liveLon}, ${liveLat}`;
+          const isPolyC = element.classList && element.classList.contains('earth-survey-centroid-pin');
+        labelText.textContent = isPolyC ? `📐 سنترويد: ${liveLon}, ${liveLat}` : `📍 الموقع: ${liveLon}, ${liveLat}`;
         }
       };
 
