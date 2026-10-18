@@ -2195,6 +2195,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCheckUpdate = document.getElementById('btn-check-update');
   const modalUpdateDialog = document.getElementById('modal-update-dialog');
   const btnCloseUpdateModal = document.getElementById('btn-close-update-modal');
+  const btnDismissUpdateModal = document.getElementById('btn-dismiss-update-modal');
+  const btnRecheckUpdate = document.getElementById('btn-recheck-update');
   const lblCurrVersion = document.getElementById('lbl-curr-version');
   const lblRemoteVersion = document.getElementById('lbl-remote-version');
   const updateReleaseMeta = document.getElementById('update-release-meta');
@@ -2427,6 +2429,41 @@ document.addEventListener('DOMContentLoaded', () => {
           window.location.reload();
         }
       }, 500);
+    });
+  }
+
+  // --- Open & Close Update Modal Listeners ---
+  if (btnCheckUpdate && modalUpdateDialog) {
+    btnCheckUpdate.addEventListener('click', (e) => {
+      e.preventDefault();
+      modalUpdateDialog.style.display = 'flex';
+      checkGithubUpdate(false);
+    });
+  }
+
+  if (btnCloseUpdateModal && modalUpdateDialog) {
+    btnCloseUpdateModal.addEventListener('click', () => {
+      modalUpdateDialog.style.display = 'none';
+    });
+  }
+
+  if (btnDismissUpdateModal && modalUpdateDialog) {
+    btnDismissUpdateModal.addEventListener('click', () => {
+      modalUpdateDialog.style.display = 'none';
+    });
+  }
+
+  if (btnRecheckUpdate) {
+    btnRecheckUpdate.addEventListener('click', () => {
+      checkGithubUpdate(false);
+    });
+  }
+
+  if (modalUpdateDialog) {
+    modalUpdateDialog.addEventListener('click', (e) => {
+      if (e.target === modalUpdateDialog) {
+        modalUpdateDialog.style.display = 'none';
+      }
     });
   }
 
