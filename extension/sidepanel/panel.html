@@ -33,8 +33,9 @@
       </div>
     </div>
     <div class="header-actions">
-      <button id="btn-check-update" class="btn-update-header" title="فحص التحديثات من GitHub وإعادة تحميل الإضافة" onclick="var m=document.getElementById('modal-update-dialog');if(m){m.style.display='flex';if(window.checkGithubUpdate)window.checkGithubUpdate(false);}">
+      <button id="btn-check-update" class="btn-update-header" title="فحص التحديثات من GitHub وتطبيق أحدث المميزات" onclick="openUpdateModal()">
         <span>🔄 التحديثات</span>
+        <span id="updateAvailableBadge" style="display: none; background: #10b981; color: #ffffff; font-size: 10px; font-weight: 800; padding: 1px 6px; border-radius: 10px; margin-right: 4px; box-shadow: 0 0 8px #10b981;">جديد!</span>
       </button>
       <button id="btn-reset-all" class="btn-reset-header" title="مسح كافة البيانات وتفريغ النموذج لمعاملة جديدة">
         <span>🗑️ تفريغ (Reset)</span>
@@ -608,61 +609,104 @@
 
   </main>
 
-  <!-- Modal: System Update Dialog (DUDC Style Clean UI) -->
-  <div id="modal-update-dialog" class="update-modal-backdrop" style="display: none;">
-    <div class="update-modal-box">
-      <div class="update-modal-header">
-        <div class="update-modal-title" style="display: flex; align-items: center; gap: 8px;">
-          <span>🔄</span>
-          <span style="font-weight: 800; font-size: 15px; color: #38bdf8;">فحص وتحديث المنظومة (GitHub)</span>
-          <span id="update-modal-badge" class="badge-subtle" style="font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8;">جارٍ الفحص...</span>
+  <!-- ==========================================================================
+       نافذة فحص وتحديث المنظومة من GitHub (System Updater Modal - DUDC V4.0 Aligned)
+       ========================================================================== -->
+  <div class="update-modal-backdrop" id="updateModalBackdrop" style="display: none;">
+    <div class="update-modal-box" style="max-width: 580px; width: 94%;">
+      <div class="update-modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">🔄</span>
+          <span style="font-weight: 800; font-size: 15px; color: #38bdf8;">فحص وتحديث المنظومة من GitHub</span>
+          <span id="updateModalStatusBadge" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; font-size: 11px; font-weight: bold; padding: 2px 8px; border-radius: 12px;">فحص الاتصال...</span>
         </div>
-        <button type="button" id="btn-close-update-modal" class="btn-close-modal" title="إغلاق" onclick="var m=document.getElementById('modal-update-dialog');if(m)m.style.display='none';">✕</button>
+        <button type="button" class="btn-close-modal" id="btnCloseUpdateModal" style="padding: 2px 8px; font-size: 13px;" onclick="closeUpdateModal()">✕</button>
       </div>
 
-      <div class="update-modal-body">
-        <!-- Version Info Bar -->
-        <div class="update-version-row" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin-bottom: 12px;">
+      <!-- محتوى حالة التحديث -->
+      <div id="updateModalContent" style="display: flex; flex-direction: column; gap: 12px;">
+        <!-- شريط الإصدار الحالي -->
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
           <div>
-            <span style="color: #94a3b8;">الإصدار المثبت:</span>
-            <strong class="version-val current-val" id="lbl-curr-version" style="font-family: monospace; color: #f8fafc; margin-right: 4px;">v3.0.0</strong>
+            <span style="color: #94a3b8;">الإصدار الحالي المثبت:</span>
+            <strong id="currentCommitHash" style="font-family: monospace; color: #f8fafc; margin-right: 6px;">--</strong>
+            <span id="currentCommitDate" style="color: #94a3b8; font-size: 11px;"></span>
           </div>
-          <div>
-            <span style="color: #94a3b8;">أحدث إصدار (GitHub):</span>
-            <strong class="version-val remote-val" id="lbl-remote-version" style="font-family: monospace; color: #38bdf8; margin-right: 4px;">جاري الفحص...</strong>
-          </div>
-          <button type="button" id="btn-recheck-update" class="btn btn-xs btn-outline-cyan" style="padding: 3px 8px; font-size: 11px;">
+          <button type="button" class="btn btn-xs btn-outline-cyan" id="btnRecheckUpdate" style="padding: 4px 10px; font-size: 11px;" onclick="fetchUpdateInfo(true)">
             🔄 إعادة الفحص
           </button>
         </div>
 
-        <div id="update-release-meta" class="update-release-meta" style="display: none; font-size: 11px; color: #cbd5e1; margin-bottom: 8px;">
-          <span id="lbl-release-tag" class="release-tag-pill" style="background: rgba(56, 189, 248, 0.15); color: #bae6fd; padding: 2px 6px; border-radius: 4px; font-family: monospace;"></span>
-          <span id="lbl-release-date" class="release-date" style="margin-right: 8px; color: #94a3b8;"></span>
+        <!-- حالة الفحص والرسائل -->
+        <div id="updateCheckingState" style="text-align: center; padding: 20px 10px;">
+          <div style="font-size: 28px; margin-bottom: 8px;">⏳</div>
+          <p style="font-size: 13px; color: #94a3b8;">جارٍ فحص مستودع GitHub وجلب سجل التحديثات...</p>
         </div>
 
-        <!-- Dynamic Status Alert Box -->
-        <div id="update-status-msg" class="update-status-alert info" style="padding: 12px; border-radius: 8px; font-size: 12.5px; line-height: 1.6; margin-bottom: 10px;">
-          <span>🔍 جارٍ الاتصال بمستودع GitHub للتحقق من وجود تحديثات جديدة...</span>
+        <!-- عندما يكون النظام محدثاً بالفعل -->
+        <div id="updateUpToDateState" style="display: none; text-align: center; padding: 20px 10px;">
+          <div style="font-size: 36px; margin-bottom: 8px;">✨</div>
+          <h4 style="color: #34d399; font-weight: bold; margin-bottom: 6px;">المنظومة محدثة بالكامل!</h4>
+          <p style="font-size: 12px; color: #94a3b8; line-height: 1.6;" id="upToDateMsg">
+            أنت تعمل على أحدث كود منشور في المستودع الرسمي. لا توجد أي تحديثات جديدة حالياً.
+          </p>
         </div>
 
-        <!-- Incoming Commits / Release Notes Container -->
-        <div id="update-commits-container" style="display: none; max-height: 180px; overflow-y: auto; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 8px; margin-bottom: 12px; font-size: 11.5px; line-height: 1.5; color: #cbd5e1;">
-        </div>
+        <!-- عندما يتوفر تحديث جديد -->
+        <div id="updateAvailableState" style="display: none; flex-direction: column; gap: 10px;">
+          <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 24px;">🚀</span>
+            <div>
+              <div style="font-weight: 800; font-size: 14px; color: #34d399;">يتوفر تحديث جديد للمنظومة على GitHub!</div>
+              <div style="font-size: 11px; color: #94a3b8;" id="updateIncomingCountNotice">يوجد تعديلات جاهزة للتحميل والتطبيق المباشر.</div>
+            </div>
+          </div>
 
-        <!-- Action Footer -->
-        <div class="update-modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 12px; margin-top: 8px;">
-          <span style="font-size: 11px; color: #64748b;">مستودع رسمي: KillD00zer/certi_changes_overtime</span>
-          <div style="display: flex; gap: 8px;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-dismiss-update-modal" style="padding: 6px 12px; font-size: 12px;" onclick="var m=document.getElementById('modal-update-dialog');if(m)m.style.display='none';">إغلاق</button>
-            <button type="button" class="btn btn-primary btn-sm" id="btn-reload-extension" style="padding: 6px 16px; font-size: 12px; font-weight: 800; background: linear-gradient(135deg, #0284c7, #0369a1);">
-              🚀 سحب وتطبيق التحديث (Pull & Reload)
-            </button>
+          <!-- تفاصيل ورسائل التحديث المكتوبة أثناء الـ push -->
+          <div style="font-size: 12px; font-weight: bold; color: #e2e8f0; margin-top: 4px;">
+            📝 رسائل وتفاصيل التحديث المنشور (Commit Notes & Comments):
+          </div>
+          <div id="updateCommitsList" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-left: 4px;">
+            <!-- يتم تعبئة الكوميتات مع الـ subject والـ body هنا -->
           </div>
         </div>
+
+        <!-- حالة خطأ في الفحص (انقطاع إنترنت أو غيره) -->
+        <div id="updateErrorState" style="display: none; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 14px; text-align: center;">
+          <div style="font-size: 24px; margin-bottom: 6px;">⚠️</div>
+          <div style="font-weight: bold; color: #f87171; font-size: 13px;" id="updateErrorMsg">تعذر الاتصال بـ GitHub</div>
+        </div>
+
+        <!-- حالة جاري التحديث (Progress) -->
+        <div id="updateApplyingState" style="display: none; text-align: center; padding: 24px 10px;">
+          <div style="font-size: 32px; margin-bottom: 10px;">📥</div>
+          <h4 style="color: #38bdf8; font-weight: bold; margin-bottom: 6px;">جارٍ سحب وتطبيق التحديثات الآن (git pull)...</h4>
+          <p style="font-size: 12px; color: #94a3b8;">يرجى الانتظار، لا تغلق المتصفح...</p>
+        </div>
+
+        <!-- تم التحديث بنجاح -->
+        <div id="updateSuccessState" style="display: none; text-align: center; padding: 20px 10px;">
+          <div style="font-size: 36px; margin-bottom: 8px;">🎉</div>
+          <h4 style="color: #34d399; font-weight: bold; margin-bottom: 6px;">تم تحديث المنظومة بنجاح!</h4>
+          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 14px;" id="updateSuccessDetail">
+            تم دمج أحدث التعديلات والملفات بنجاح. يرجى تنشيط الإضافة لتفعيل كافة التحديثات.
+          </p>
+          <button type="button" class="btn btn-green" id="btnReloadExtensionAction" onclick="reloadExtensionApp()" style="padding: 8px 20px; font-weight: bold; background: linear-gradient(135deg, #10b981, #059669); color: #fff; border: none; border-radius: 6px; cursor: pointer;">
+            🔄 تنشيط وإعادة تشغيل الإضافة الآن
+          </button>
+        </div>
       </div>
-    </div>
-  </div>
+
+      <!-- أزرار أسفل المودال -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+        <span style="font-size: 11px; color: #64748b;">مستودع رسمي: KillD00zer/certi_changes_overtime</span>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeUpdateModal()">إغلاق</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btnExecutePull" style="display: none; font-weight: bold; background: linear-gradient(135deg, #0284c7, #0369a1);" onclick="applyAppUpdate()">
+            🚀 سحب وتطبيق التحديث (Pull)
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
