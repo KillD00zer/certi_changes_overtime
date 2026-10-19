@@ -2219,18 +2219,18 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/'/g, '&#039;');
   }
 
-  window.openUpdateModal = function() {
+  function openUpdateModal() {
     const modal = document.getElementById('updateModalBackdrop');
     if (modal) modal.style.display = 'flex';
     fetchUpdateInfo(false);
-  };
+  }
 
-  window.closeUpdateModal = function() {
+  function closeUpdateModal() {
     const modal = document.getElementById('updateModalBackdrop');
     if (modal) modal.style.display = 'none';
-  };
+  }
 
-  window.reloadExtensionApp = function() {
+  function reloadExtensionApp() {
     showToast('🔄 جارٍ تنشيط وإعادة تشغيل الإضافة...');
     if (chrome.runtime && chrome.runtime.reload) {
       chrome.runtime.reload();
@@ -2238,9 +2238,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       window.location.reload();
     }, 400);
-  };
+  }
 
-  window.fetchUpdateInfo = function(forceRefresh = false) {
+  function fetchUpdateInfo(forceRefresh = false) {
     const checkingState = document.getElementById('updateCheckingState');
     const upToDateState = document.getElementById('updateUpToDateState');
     const availableState = document.getElementById('updateAvailableState');
@@ -2373,10 +2373,11 @@ document.addEventListener('DOMContentLoaded', () => {
           statusBadge.style.borderColor = '#f87171';
         }
       });
-  };
+  }
 
-  window.applyAppUpdate = function() {
+  function applyAppUpdate() {
     const availableState = document.getElementById('updateAvailableState');
+    const upToDateState = document.getElementById('updateUpToDateState');
     const applyingState = document.getElementById('updateApplyingState');
     const successState = document.getElementById('updateSuccessState');
     const errorState = document.getElementById('updateErrorState');
@@ -2384,6 +2385,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusBadge = document.getElementById('updateModalStatusBadge');
 
     if (availableState) availableState.style.display = 'none';
+    if (upToDateState) upToDateState.style.display = 'none';
     if (applyingState) applyingState.style.display = 'block';
     if (btnExecutePull) btnExecutePull.style.display = 'none';
 
@@ -2428,13 +2430,62 @@ document.addEventListener('DOMContentLoaded', () => {
         const errElem = document.getElementById('updateErrorMsg');
         if (errElem) errElem.textContent = 'خطأ أثناء تطبيق التحديث: ' + err.message;
       });
-  };
+  }
 
-  // Header button listener
+  // --- Attach Explicit Event Listeners (Zero CSP Inline Violations) ---
   const btnCheckUpdate = document.getElementById('btn-check-update');
   if (btnCheckUpdate) {
-    btnCheckUpdate.addEventListener('click', () => {
+    btnCheckUpdate.addEventListener('click', (e) => {
+      e.preventDefault();
       openUpdateModal();
+    });
+  }
+
+  const btnCloseUpdateModal = document.getElementById('btnCloseUpdateModal');
+  if (btnCloseUpdateModal) {
+    btnCloseUpdateModal.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeUpdateModal();
+    });
+  }
+
+  const btnCloseModalFooter = document.getElementById('btnCloseModalFooter');
+  if (btnCloseModalFooter) {
+    btnCloseModalFooter.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeUpdateModal();
+    });
+  }
+
+  const btnRecheckUpdate = document.getElementById('btnRecheckUpdate');
+  if (btnRecheckUpdate) {
+    btnRecheckUpdate.addEventListener('click', (e) => {
+      e.preventDefault();
+      fetchUpdateInfo(true);
+    });
+  }
+
+  const btnExecutePull = document.getElementById('btnExecutePull');
+  if (btnExecutePull) {
+    btnExecutePull.addEventListener('click', (e) => {
+      e.preventDefault();
+      applyAppUpdate();
+    });
+  }
+
+  const btnForcePull = document.getElementById('btnForcePull');
+  if (btnForcePull) {
+    btnForcePull.addEventListener('click', (e) => {
+      e.preventDefault();
+      applyAppUpdate();
+    });
+  }
+
+  const btnReloadExtensionAction = document.getElementById('btnReloadExtensionAction');
+  if (btnReloadExtensionAction) {
+    btnReloadExtensionAction.addEventListener('click', (e) => {
+      e.preventDefault();
+      reloadExtensionApp();
     });
   }
 
@@ -2447,6 +2498,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Expose to window for external/debug access
+  window.openUpdateModal = openUpdateModal;
+  window.closeUpdateModal = closeUpdateModal;
+  window.fetchUpdateInfo = fetchUpdateInfo;
+  window.applyAppUpdate = applyAppUpdate;
+  window.reloadExtensionApp = reloadExtensionApp;
 
   // Silent check in background 3 seconds after launch
   setTimeout(() => {
