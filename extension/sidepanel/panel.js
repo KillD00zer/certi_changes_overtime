@@ -2363,12 +2363,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (errorState) errorState.style.display = 'block';
         const errElem = document.getElementById('updateErrorMsg');
         if (errElem) {
-          errElem.innerHTML = `⚠️ <strong>تعذر الاتصال بمحرك التحديث المحلي (127.0.0.1:8766):</strong><br>
-          تأكد من تشغيل الإضافة عبر <code style="color:#38bdf8;">Launch_Chrome_With_Extension.bat</code> لتشغيل خدمة التحديث بالخلفية،<br>
-          أو شغّل سكريبت <code style="color:#38bdf8;">Update_Extension.bat</code> مباشرة للتحديث الميداني.`;
+          errElem.innerHTML = `⚠️ <strong>Unable to connect to local updater service (127.0.0.1:8766):</strong><br>
+          Make sure to launch the extension via <code style="color:#38bdf8;">Launch_Chrome_With_Extension.bat</code> to run the background update service,<br>
+          or run <code style="color:#38bdf8;">Update_Extension.bat</code> directly for field updates.`;
         }
         if (statusBadge) {
-          statusBadge.textContent = 'الخدمة غير متصلة';
+          statusBadge.textContent = 'Service Offline';
           statusBadge.style.color = '#f87171';
           statusBadge.style.borderColor = '#f87171';
         }

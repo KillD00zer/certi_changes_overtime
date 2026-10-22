@@ -183,18 +183,29 @@ document.addEventListener('DOMContentLoaded', () => {
     // A. Apply Orientation
     applyOrientation(currentOrientation);
 
-    // B. Logos
-    if (window.TemplateAssets) {
-      if (window.TemplateAssets.DAKAHLIA_LOGO) {
+    // B. Logos: Load directly from assets folder with cache-busting, fallback to TemplateAssets
+    const cacheBuster = Date.now();
+
+    imgDakahliaLogo.onerror = () => {
+      if (window.TemplateAssets && window.TemplateAssets.DAKAHLIA_LOGO) {
         imgDakahliaLogo.src = 'data:image/png;base64,' + window.TemplateAssets.DAKAHLIA_LOGO;
       }
-      if (window.TemplateAssets.SPATIAL_LOGO) {
+    };
+    imgDakahliaLogo.src = `../assets/dakahlia_logo.png?v=${cacheBuster}`;
+
+    imgSpatialLogo.onerror = () => {
+      if (window.TemplateAssets && window.TemplateAssets.SPATIAL_LOGO) {
         imgSpatialLogo.src = 'data:image/jpeg;base64,' + window.TemplateAssets.SPATIAL_LOGO;
       }
-      if (window.TemplateAssets.NORTH_ARROW) {
+    };
+    imgSpatialLogo.src = `../assets/spatial_logo.jpg?v=${cacheBuster}`;
+
+    imgNorthArrow.onerror = () => {
+      if (window.TemplateAssets && window.TemplateAssets.NORTH_ARROW) {
         imgNorthArrow.src = 'data:image/png;base64,' + window.TemplateAssets.NORTH_ARROW;
       }
-    }
+    };
+    imgNorthArrow.src = `../assets/north_arrow.png?v=${cacheBuster}`;
 
     // C. Citizen Metadata
     const applicantName = currentParcel.applicantName || 'غير محدد';

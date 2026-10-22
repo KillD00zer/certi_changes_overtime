@@ -7,7 +7,7 @@ cd /d "%~dp0"
 
 echo ======================================================================
 echo   Google Earth Cadastral Survey - GitHub System Updater
-echo   منظومة الرفع المساحي والمتغيرات المكانية - أداة التحديث الميداني
+echo   Cadastral Survey and Spatial Changes Suite - Field Updater
 echo ======================================================================
 echo.
 
@@ -20,17 +20,17 @@ if %ERRORLEVEL% neq 0 (
 
 where git >nul 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo [ERROR] أداة Git غير مثبتة على هذا النظام أو غير مضافة لمتغيرات البيئة.
-    echo يرجى تثبيت Git من: https://git-scm.com/
+    echo [ERROR] Git is not installed or not found in system PATH.
+    echo Please install Git from: https://git-scm.com/
     echo.
     pause
     exit /b 1
 )
 
-echo [1/3] جارٍ الاتصال بمستودع GitHub والتحقق من التحديثات...
+echo [1/3] Connecting to GitHub repository and checking for updates...
 git fetch origin main >nul 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo [WARNING] تعذر الاتصال بـ GitHub. يرجى التحقق من اتصال الإنترنت.
+    echo [WARNING] Unable to connect to GitHub. Please check your internet connection.
     echo.
     pause
     exit /b 1
@@ -41,13 +41,13 @@ set "REMOTE_HASH="
 for /f %%a in ('git rev-parse --short HEAD') do set "LOCAL_HASH=%%a"
 for /f %%a in ('git rev-parse --short origin/main') do set "REMOTE_HASH=%%a"
 
-echo [2/3] الإصدار المثبت حالياً: [%LOCAL_HASH%]
-echo       أحدث إصدار على GitHub:   [%REMOTE_HASH%]
+echo [2/3] Current installed version: [%LOCAL_HASH%]
+echo       Latest GitHub version:     [%REMOTE_HASH%]
 echo.
 
 if "%LOCAL_HASH%"=="%REMOTE_HASH%" (
     echo ======================================================================
-    echo   المنظومة محدثة بالكامل لأحدث إصدار رسمي (%LOCAL_HASH%)!
+    echo   System is up to date with the latest official release: %LOCAL_HASH%
     echo ======================================================================
     echo.
     pause
@@ -55,7 +55,7 @@ if "%LOCAL_HASH%"=="%REMOTE_HASH%" (
 )
 
 echo ======================================================================
-echo   يتوفر تحديث جديد! سجل التعديلات المنشورة:
+echo   New update available. Change log:
 echo ======================================================================
 echo.
 git log HEAD..origin/main --pretty=format:"* %%s [%%h] (%%cr)"
@@ -63,27 +63,28 @@ echo.
 echo ======================================================================
 echo.
 
-set /p CONFIRM="هل تريد سحب وتطبيق هذا التحديث الآن؟ (Y/N، الافتراضي Y): "
+set "CONFIRM=Y"
+set /p CONFIRM="Do you want to pull and apply this update now? (Y/N, default Y): "
 if /i "%CONFIRM%"=="N" (
-    echo تم إلغاء عملية التحديث.
+    echo Update cancelled.
     pause
     exit /b 0
 )
 
 echo.
-echo [3/3] جارٍ سحب وتطبيق التحديثات من GitHub (git pull)...
+echo [3/3] Pulling and applying updates from GitHub (git pull)...
 echo ----------------------------------------------------------------------
 git pull origin main
 
 if %ERRORLEVEL% neq 0 (
     echo.
-    echo [ملاحظة] تم العثور على تعديلات محلية. جارٍ حفظها مؤقتاً (git stash) وإعادة السحب...
+    echo [NOTE] Local modifications detected. Stashing changes (git stash) and retrying pull...
     git stash >nul 2>&1
     git pull origin main
 )
 
 if %ERRORLEVEL% neq 0 (
-    echo [ملاحظة] جارٍ تنظيف الملفات المتعارضة (git checkout -- .) وإعادة السحب...
+    echo [NOTE] Cleaning conflicting files (git checkout -- .) and retrying pull...
     git checkout -- . >nul 2>&1
     git pull origin main
 )
@@ -91,12 +92,12 @@ if %ERRORLEVEL% neq 0 (
 if %ERRORLEVEL% equ 0 (
     echo.
     echo ======================================================================
-    echo   [نجاح] تم تحديث المنظومة بنجاح إلى أحدث إصدار!
-    echo   يمكنك الآن إعادة تحميل الإضافة في المتصفح لاستخدام المميزات الجديدة.
+    echo   [SUCCESS] System updated successfully to the latest version.
+    echo   Please reload the extension in Chrome to use the new features.
     echo ======================================================================
 ) else (
     echo.
-    echo [خطأ] تعذر استكمال التحديث التلقائي. يرجى مراجعة رسائل الخطأ أعلاه.
+    echo [ERROR] Automatic update could not be completed. Please check the error messages above.
 )
 
 echo.

@@ -1,21 +1,21 @@
 @echo off
 setlocal EnableExtensions
 chcp 65001 > nul
-title تشغيل إضافة Google Earth Survey والمتغيرات المكانية
+title Launch Google Earth Cadastral Survey & Spatial Changes Suite
 color 0B
 cls
 cd /d "%~dp0"
 
 echo ================================================================
 echo    GOOGLE EARTH CADASTRAL SURVEY EXTENSION (DUDC)
-echo    منظومة الرفع المساحي والمتغيرات المكانية - إضافة Google Earth Web
+echo    Cadastral Survey and Spatial Changes Suite - Web Launcher
 echo ================================================================
 echo.
 
 set "EXT_PATH=%~dp0extension"
 set "USER_DATA=%~dp0.browser_profile"
 
-:: البحث عن متصفح Chrome أو Edge المثبت على النظام
+:: Search for installed Google Chrome or Microsoft Edge
 set "BROWSER_BIN="
 if exist "C:\Program Files\Google\Chrome\Application\chrome.exe" (
     set "BROWSER_BIN=C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -30,20 +30,20 @@ if exist "C:\Program Files\Google\Chrome\Application\chrome.exe" (
 )
 
 if "%BROWSER_BIN%"=="" (
-    echo [!] لم يتم العثور على متصفح Chrome أو Edge تلقائياً.
-    echo يمكنك تثبيت وتفعيل الإضافة يدوياً من المسار:
+    echo [!] Chrome or Edge browser was not found automatically.
+    echo You can install and load the extension manually from:
     echo %EXT_PATH%
-    echo عبر فتح edge://extensions أو chrome://extensions وتفعيل Developer Mode ثم Load Unpacked.
+    echo by opening edge://extensions or chrome://extensions, enabling Developer Mode, and clicking Load Unpacked.
     echo.
     pause
     exit /b 1
 )
 
-echo [*] المتصفح المكتشف: %BROWSER_BIN%
-echo [*] مسار الإضافة: %EXT_PATH%
-echo [*] جارٍ تشغيل خدمة التحديث التلقائي بالخلفية...
+echo [*] Detected browser: %BROWSER_BIN%
+echo [*] Extension path:   %EXT_PATH%
+echo [*] Starting background auto-updater service...
 
-:: تشغيل خدمة التحديث المباشر التلقائي بالخلفية لدعم زر التحديث داخل الإضافة (Detached Daemon)
+:: Start background auto-updater daemon for in-app extension updates
 where pythonw >nul 2>&1
 if %ERRORLEVEL% equ 0 (
     start "" pythonw "%~dp0updater_service.py"
@@ -54,19 +54,20 @@ if %ERRORLEVEL% equ 0 (
     )
 )
 
-echo [*] جارٍ إطلاق المتصفح وتحميل الإضافة تلقائياً...
+echo [*] Launching browser and loading extension automatically...
 echo.
 
-:: استخدام بروفايل مخصص لضمان تحميل الإضافة حتى لو كان المتصفح مفتوحاً مسبقاً
+:: Launch browser with dedicated user profile to ensure extension loads properly
 start "" "%BROWSER_BIN%" --user-data-dir="%USER_DATA%" --load-extension="%EXT_PATH%" --no-first-run --no-default-browser-check "https://earth.google.com/web"
 
 echo ================================================================
-echo [OK] تم إطلاق المتصفح وتحميل الإضافة بنجاح!
+echo [OK] Browser launched and extension loaded successfully.
 echo.
-echo 💡 ملاحظة هامة:
-echo    إذا كان المتصفح مفتوحاً من قبل والإضافة مثبتة لديك:
-echo    ادخل على edge://extensions أو chrome://extensions واضغط [🔄 Reload / إعادة تحميل]
+echo Important Note:
+echo    If your browser was already running with this extension:
+echo    Navigate to chrome://extensions or edge://extensions and click [Reload]
 echo ================================================================
 echo.
-timeout /t 5 > nul
+timeout /t 5 /nobreak >nul 2>nul || ping -n 5 127.0.0.1 >nul
 exit /b 0
+

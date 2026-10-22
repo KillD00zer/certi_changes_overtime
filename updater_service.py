@@ -153,7 +153,7 @@ def check_git_updates():
     if not git_bin:
         return {
             "success": False,
-            "error": "أداة Git غير مثبتة على هذا النظام أو غير مضافة لمتغيرات البيئة PATH."
+            "error": "Git is not installed on this system or not found in system PATH."
         }
 
     try:
@@ -168,17 +168,17 @@ def check_git_updates():
         if fetch_res.returncode != 0:
             return {
                 "success": False,
-                "error": f"تعذر الاتصال بـ GitHub: {fetch_res.stderr.strip() or fetch_res.stdout.strip()}"
+                "error": f"Failed to connect to GitHub: {fetch_res.stderr.strip() or fetch_res.stdout.strip()}"
             }
     except subprocess.TimeoutExpired:
         return {
             "success": False,
-            "error": "انتهت مهلة الاتصال بخادم GitHub. يرجى التحقق من اتصال الإنترنت."
+            "error": "Connection to GitHub timed out. Please check your internet connection."
         }
     except Exception as e:
         return {
             "success": False,
-            "error": f"خطأ أثناء فحص GitHub: {str(e)}"
+            "error": f"Error while checking GitHub: {str(e)}"
         }
 
     try:
@@ -215,7 +215,7 @@ def check_git_updates():
                 "update_available": False,
                 "current_commit": current_commit,
                 "remote_hash": remote_hash,
-                "message": "أنت تعمل على أحدث إصدار متوفر حالياً."
+                "message": "You are running the latest official version."
             }
 
         log_out = subprocess.check_output(
@@ -252,7 +252,7 @@ def check_git_updates():
     except Exception as e:
         return {
             "success": False,
-            "error": f"فشل قراءة سجل التحديثات: {str(e)}"
+            "error": f"Failed to read update history: {str(e)}"
         }
 
 
@@ -261,7 +261,7 @@ def perform_git_update():
     log("perform_git_update requested")
     git_bin = get_git_binary()
     if not git_bin:
-        return {"success": False, "error": "أداة Git غير متوفرة على هذا النظام."}
+        return {"success": False, "error": "Git tool is not available on this system."}
 
     try:
         # Tier 1: Normal Pull
@@ -320,11 +320,11 @@ def perform_git_update():
         if pull_res.returncode != 0:
             log("Git pull failed, attempting zip fallback...")
             if zip_fallback_pull():
-                pull_res_output = "تم التحديث عبر حزمة GitHub المباشرة بنجاح."
+                pull_res_output = "Updated via direct GitHub package successfully."
             else:
                 return {
                     "success": False,
-                    "error": f"فشل السحب من GitHub: {pull_res.stderr.strip() or pull_res.stdout.strip()}"
+                    "error": f"Failed to pull from GitHub: {pull_res.stderr.strip() or pull_res.stdout.strip()}"
                 }
         else:
             pull_res_output = pull_res.stdout.strip()
@@ -355,15 +355,15 @@ def perform_git_update():
         log(f"Update succeeded to commit {new_commit['hash']}")
         return {
             "success": True,
-            "message": "تم تحديث المنظومة بنجاح إلى أحدث إصدار!",
+            "message": "System updated successfully to the latest version!",
             "commit": new_commit,
             "pull_output": pull_res_output
         }
     except subprocess.TimeoutExpired:
-        return {"success": False, "error": "استغرق التحديث وقتاً طويلاً وتجاوز المهلة المحددة."}
+        return {"success": False, "error": "Update took too long and timed out."}
     except Exception as e:
         log(f"perform_git_update exception: {e}")
-        return {"success": False, "error": f"حدث خطأ أثناء التحديث: {str(e)}"}
+        return {"success": False, "error": f"An error occurred during update: {str(e)}"}
 
 
 class UpdaterRequestHandler(BaseHTTPRequestHandler):
